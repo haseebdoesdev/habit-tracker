@@ -1,0 +1,6 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* TODO: Add custom global styles if needed */
+/* WHY: Tailwind handles most styling, but some global resets might be useful */
