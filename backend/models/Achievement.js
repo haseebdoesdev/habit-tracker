@@ -1,13 +1,24 @@
 const mongoose = require('mongoose');
 
 const AchievementSchema = new mongoose.Schema({
-    // TODO: Define Achievement schema fields
-    // - user (ObjectId, ref: 'User')
-    // - title (String, required)
-    // - description (String)
-    // - icon (String)
-    // - dateEarned (Date, default: Date.now)
-    // WHY: Gamification element to reward users
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    title: {
+        type: String,
+        required: true
+    },
+    description: {
+        type: String
+    },
+    icon: {
+        type: String
+    },
+    dateEarned: {
+        type: Date,
+        default: Date.now
+    }
 });
 
 module.exports = mongoose.model('Achievement', AchievementSchema);

@@ -2,21 +2,50 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
 const UserSchema = new mongoose.Schema({
-    // TODO: Define User schema with fields:
-    // - email (String, required, unique, lowercase, trim)
-    // - password (String, required, minlength: 6)
-    // - name (String, required)
-    // - xp (Number, default: 0)
-    // - level (Number, default: 1)
-    // - badges (Array of Objects: {name, earnedAt})
-    // - googleCalendarToken (String, optional - for calendar sync)
-    // - createdAt (Date, default: Date.now)
-    // WHY: Structure the user data for consistency and validation
+    email: {
+        type: String,
+        required: true,
+        unique: true,
+        lowercase: true,
+        trim: true
+    },
+    password: {
+        type: String,
+        required: true,
+        minlength: 6
+    },
+    name: {
+        type: String,
+        required: true
+    },
+    xp: {
+        type: Number,
+        default: 0
+    },
+    level: {
+        type: Number,
+        default: 1
+    },
+    badges: [{
+        name: String,
+        earnedAt: Date
+    }],
+    googleCalendarToken: {
+        type: String
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now
+    }
 });
 
-// TODO: Add pre-save hook to hash password with bcrypt
-// WHY: Never store plain text passwords - security best practice!
-// HINT: Use bcrypt.hash() with salt rounds = 10
-// SECURITY: Hashing ensures that even if the DB is compromised, passwords remain secure
+UserSchema.pre('save', async function (next) {
+    if (!this.isModified('password')) {
+        return next();
+    }
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    next();
+});
 
 module.exports = mongoose.model('User', UserSchema);

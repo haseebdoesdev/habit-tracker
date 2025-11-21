@@ -4,47 +4,73 @@ const jwt = require('jsonwebtoken');
 
 exports.registerUser = async (req, res) => {
     try {
-        // TODO: Destructure name, email, password from req.body
-        // WHY: Extract user input for processing
+        const { name, email, password } = req.body;
 
-        // TODO: Check if user already exists
-        // WHY: Prevent duplicate accounts with the same email
+        let user = await User.findOne({ email });
+        if (user) {
+            return res.status(400).json({ msg: 'User already exists' });
+        }
 
-        // TODO: Create new User instance
-        // WHY: Prepare data for saving
+        user = new User({
+            name,
+            email,
+            password
+        });
 
-        // TODO: Save user to database
-        // WHY: Persist user data
-        // HINT: Password hashing is handled in the User model pre-save hook
+        await user.save();
 
-        // TODO: Create JWT payload
-        // WHY: Prepare data to be encoded in the token
+        const payload = {
+            user: {
+                id: user.id
+            }
+        };
 
-        // TODO: Sign and return JWT token
-        // WHY: Allow user to authenticate immediately after registration
-
-        res.status(201).json({ message: 'Register user - to be implemented' });
+        jwt.sign(
+            payload,
+            process.env.JWT_SECRET,
+            { expiresIn: 360000 },
+            (err, token) => {
+                if (err) throw err;
+                res.json({ token });
+            }
+        );
     } catch (err) {
+        console.error(err.message);
         res.status(500).send('Server error');
     }
 };
 
 exports.loginUser = async (req, res) => {
     try {
-        // TODO: Destructure email, password from req.body
+        const { email, password } = req.body;
 
-        // TODO: Find user by email
-        // WHY: Check if the account exists
+        let user = await User.findOne({ email });
+        if (!user) {
+            return res.status(400).json({ msg: 'Invalid Credentials' });
+        }
 
-        // TODO: Check if password matches
-        // WHY: Verify credentials
-        // HINT: Use bcrypt.compare()
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).json({ msg: 'Invalid Credentials' });
+        }
 
-        // TODO: Return JWT token
-        // WHY: Grant access to protected routes
+        const payload = {
+            user: {
+                id: user.id
+            }
+        };
 
-        res.status(200).json({ message: 'Login user - to be implemented' });
+        jwt.sign(
+            payload,
+            process.env.JWT_SECRET,
+            { expiresIn: 360000 },
+            (err, token) => {
+                if (err) throw err;
+                res.json({ token });
+            }
+        );
     } catch (err) {
+        console.error(err.message);
         res.status(500).send('Server error');
     }
 };

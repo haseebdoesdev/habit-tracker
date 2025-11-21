@@ -1,13 +1,26 @@
 const mongoose = require('mongoose');
 
 const LogSchema = new mongoose.Schema({
-    // TODO: Define Log schema fields
-    // - user (ObjectId, ref: 'User')
-    // - habit (ObjectId, ref: 'Habit')
-    // - date (Date, required)
-    // - status (String, enum: ['completed', 'skipped', 'failed'], default: 'completed')
-    // - notes (String)
-    // WHY: Keep a separate log for analytics and history tracking
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    },
+    habit: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Habit'
+    },
+    date: {
+        type: Date,
+        required: true
+    },
+    status: {
+        type: String,
+        enum: ['completed', 'skipped', 'failed'],
+        default: 'completed'
+    },
+    notes: {
+        type: String
+    }
 });
 
 module.exports = mongoose.model('Log', LogSchema);
