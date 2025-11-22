@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Login from './components/login';
 // TODO: Import components (Login, Register, Dashboard, etc.)
 // WHY: Map routes to specific page components
 
@@ -11,6 +12,7 @@ const App = () => {
                 {/* WHY: Navigation should be visible on most pages */}
 
                 <Routes>
+                    <Route path="/login" element={<Login />} />
                     {/* TODO: Define Route for /login */}
                     {/* WHY: Public route for authentication */}
 
