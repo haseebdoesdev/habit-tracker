@@ -10,6 +10,9 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 // Define the model once to reuse
 const MODEL_NAME = "gemini-2.5-flash";
 
+/**
+ * Basic content generation
+ */
 export const generateContent = async (prompt) => {
     try {
         const response = await ai.models.generateContent({
