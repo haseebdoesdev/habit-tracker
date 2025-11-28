@@ -1,6 +1,47 @@
+/* Tailwind CSS imports */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* TODO: Add custom global styles if needed */
-/* WHY: Tailwind handles most styling, but some global resets might be useful */
+/* 
+ * Custom Global Styles
+ * ====================
+ * Add any custom CSS that applies across the entire app.
+ */
+
+/* TODO: Add custom base styles if needed */
+/* WHY: Establish consistent styling across the app */
+/* APPROACH: Define custom utility classes or override defaults */
+
+/* Example: Custom scrollbar styling */
+/*
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+*/
+
+/* TODO: Add custom component classes using @apply */
+/* WHY: Reusable styled components */
+/* APPROACH: Use Tailwind's @apply directive */
+
+/* Example:
+@layer components {
+  .btn-primary {
+    @apply px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors;
+  }
+  
+  .card {
+    @apply bg-white rounded-xl shadow-md p-6;
+  }
+}
+*/
+
