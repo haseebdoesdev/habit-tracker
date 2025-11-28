@@ -9,3 +9,6 @@ Team Members:
 - Omamah: Logging, Calendar, Accountability
 """
 
+from .main import app
+
+__all__ = ["app"]
