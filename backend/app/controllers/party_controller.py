@@ -13,9 +13,11 @@ import secrets
 
 # TODO: Import models (Party, PartyMember, User)
 # WHY: Need to manage party data
-
+from app.models.party import Party, PartyMember
+from app.models.user import User
 # TODO: Import party schemas
-
+from app.schemas.party import PartyCreate, PartyResponse, PartyMemberResponse
+from app.schemas.user import UserResponse
 
 async def create_party(party_data, current_user, db: Session):
     """
@@ -23,7 +25,6 @@ async def create_party(party_data, current_user, db: Session):
     
     TODO: Validate party name is unique (optional)
     WHY: Avoid confusion with duplicate names
-    
     TODO: Generate unique invite code
     WHY: Used to join the party
     APPROACH: Generate random string using secrets module
