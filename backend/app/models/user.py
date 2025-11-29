@@ -11,7 +11,7 @@ from sqlalchemy import Column, Integer, String, Boolean, DateTime, Enum, Text
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
-from accountability import AccountabilityPartnership
+from app.models.accountability import AccountabilityPartnership
 from app.database import Base
 
 class UserType(enum.Enum):
@@ -45,7 +45,10 @@ class User(Base):
     habits = relationship("Habit", back_populates="user")
     achievements = relationship("Achievement", back_populates="user")
     party_memberships = relationship("PartyMember", back_populates="user")
+    updated_at = Column(DateTime, default=datetime.utcnow)
     accountability_partnerships_as_requester = relationship("AccountabilityPartnership",    foreign_keys=[AccountabilityPartnership.requester_id],
  back_populates="requester")
     accountability_partnerships_as_partner = relationship("AccountabilityPartnership",    foreign_keys=[AccountabilityPartnership.partner_id],
  back_populates="partner")
+    goals = relationship("Goal", back_populates="user")
+    logs = relationship("Log", back_populates="user")

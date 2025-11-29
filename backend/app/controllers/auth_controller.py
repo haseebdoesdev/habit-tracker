@@ -12,7 +12,7 @@ from fastapi import HTTPException, status
 
 # TODO: Import your User model
 # WHY: Need to create and query user records
-
+from app.models.user import User
 # TODO: Import your user schemas (UserCreate, UserLogin, Token)
 # WHY: Type hints and validation
 
