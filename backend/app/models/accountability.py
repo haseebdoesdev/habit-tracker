@@ -2,97 +2,63 @@
 Accountability Partnership Model
 ================================
 [NOUMAN] This is your model to implement.
-
-Defines the AccountabilityPartnership table for partner relationships.
-Users can partner up to hold each other accountable for their habits.
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Boolean, Enum
+from sqlalchemy import (Column, Integer, String, DateTime, ForeignKey,
+ Text, Boolean, Enum, CheckConstraint, UniqueConstraint)
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
-
-# TODO: Import Base from your database module
-
+from app.database import Base
 
 class PartnershipStatus(enum.Enum):
-    """
-    Enum for accountability partnership status.
-    
-    TODO: Define status values
-    WHY: Partnerships go through a request/accept flow
-    APPROACH: Add values like PENDING, ACTIVE, DECLINED, ENDED
-    """
-    pass
+    PENDING = "pending"
+    ACTIVE = "active"
+    DECLINED = "declined"
+    ENDED = "ended"
 
 
-class AccountabilityPartnership:
-    """
-    Accountability partnership model.
+class AccountabilityPartnership(Base):
+    __tablename__ = "accountability_partnerships"
+    id = Column(Integer, primary_key=True, index=True)
+    requester_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    partner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)    
+    status = Column(Enum(PartnershipStatus), nullable=False, default=PartnershipStatus.PENDING)
+    message = Column(Text, nullable=True)
+    can_view_all_habits = Column(Boolean, default=True, nullable=False)
+    can_comment = Column(Boolean, default=True, nullable=False)
     
-    Represents a relationship where two users hold each other
-    accountable for their habits. Partners can view each other's
-    progress and leave comments.
-    
-    TODO: Make this class inherit from Base
-    """
-    
-    # TODO: Define the table name
-    # APPROACH: Set __tablename__ = "accountability_partnerships"
-    
-    # TODO: Add primary key column (id)
-    
-    # TODO: Add requester_id foreign key column
-    # WHY: The user who initiated the partnership
-    # APPROACH: Integer with ForeignKey("users.id")
-    
-    # TODO: Add partner_id foreign key column
-    # WHY: The user who was invited to partner
-    # APPROACH: Integer with ForeignKey("users.id")
-    
-    # TODO: Add status column using Enum
-    # WHY: Track if partnership is pending, active, etc.
-    # APPROACH: Use PartnershipStatus enum
-    
-    # TODO: Add message column
-    # WHY: Personal message when requesting partnership
-    # APPROACH: Text column, nullable=True
-    
-    # TODO: Add can_view_all_habits column
-    # WHY: Privacy control - partner sees all or selected habits
-    # APPROACH: Boolean with default=True
-    
-    # TODO: Add can_comment column
-    # WHY: Permission to leave comments on partner's habits
-    # APPROACH: Boolean with default=True
-    
-    # TODO: Add created_at column
-    # WHY: When the request was made
-    
-    # TODO: Add accepted_at column
-    # WHY: When the partnership became active
-    # APPROACH: DateTime, nullable=True
-    
-    # TODO: Add ended_at column
-    # WHY: When the partnership ended (if applicable)
-    # APPROACH: DateTime, nullable=True
-    
-    # ==================== RELATIONSHIPS ====================
-    
-    # TODO: Add relationship to requester (User)
-    # requester = relationship("User", foreign_keys=[requester_id])
-    
-    # TODO: Add relationship to partner (User)
-    # partner = relationship("User", foreign_keys=[partner_id])
-    
-    # ==================== CONSTRAINTS ====================
-    
-    # TODO: Add constraint to prevent self-partnerships
-    # WHY: A user can't be their own accountability partner
-    # APPROACH: Use CheckConstraint to ensure requester_id != partner_id
-    
-    # TODO: Add unique constraint on requester_id + partner_id
-    # WHY: Prevent duplicate partnership requests
-    
-    pass
+    # ---- Timestamps ----
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False) 
+    accepted_at = Column(DateTime, nullable=True)
+    ended_at = Column(DateTime, nullable=True)
 
+        # == RELATIONSHIPS ==
+    requester = relationship(
+        "User",
+        foreign_keys="AccountabilityPartnership.requester_id",  
+        back_populates="accountability_partnerships_as_requester"  
+    )
+    
+    partner = relationship(
+        "User",
+        foreign_keys="AccountabilityPartnership.partner_id",  
+        back_populates="accountability_partnerships_as_partner"  
+    )
+
+        # == CONSTRAINTS ==
+    
+    __table_args__ = (
+        # Prevent user partnering with themselves
+        CheckConstraint("requester_id != partner_id", name="ck_no_self_partnership"),
+        
+        # Ensure a user cannot request the same partner more than once
+        UniqueConstraint("requester_id", "partner_id", name="uq_unique_partnership_pair"),
+    )
+    # == debugging helper method ==
+    def __repr__(self):
+        return (
+            f"<AccountabilityPartnership id={self.id} "
+            f"requester={self.requester_id} partner={self.partner_id} "
+            f"status={self.status.value}>"
+        )
