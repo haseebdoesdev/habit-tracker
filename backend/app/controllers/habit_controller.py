@@ -9,169 +9,296 @@ Handles CRUD operations for personal habits.
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 from typing import List, Optional
+from datetime import date
 
-# TODO: Import your Habit model
-# WHY: Need to create and query habit records
-
-# TODO: Import habit schemas
-# WHY: Type hints and validation
-
-# TODO: Import streak calculator utility
-# WHY: Update streaks when habits are logged
+from app.models.habit import Habit, HabitFrequency, HabitCategory
+from app.models.log import Log
+from app.models.party_member import PartyMember
+from app.schemas.habit import HabitCreate, HabitUpdate, HabitResponse, HabitStats
 
 
-async def create_habit(habit_data, current_user, db: Session):
+async def create_habit(habit_data: HabitCreate, current_user, db: Session):
     """
     Create a new habit for the current user.
-    
-    TODO: Extract user ID from current_user
-    WHY: Habit must be linked to its owner
-    APPROACH: Get the id field from current_user
-    SECURITY: Always use authenticated user ID, never from request body
-    
-    TODO: If party_id is provided, verify user is a party member
-    WHY: Can't add habit to a party you're not in
-    APPROACH: Query party_members table
-    SECURITY: Prevent unauthorized party habit creation
-    
-    TODO: Create new Habit model instance
-    WHY: Prepare the habit for database storage
-    APPROACH: Use validated data from habit_data schema
-    
-    TODO: Add habit to database session and commit
-    WHY: Persist the habit to PostgreSQL
-    APPROACH: db.add(), db.commit(), db.refresh()
-    
-    TODO: Return the created habit
-    WHY: Frontend needs the habit with generated ID
-    APPROACH: Return the habit object (Pydantic will serialize it)
     """
-    return {"message": "Create habit - to be implemented"}
+    # If party_id is provided, verify user is a party member
+    if habit_data.party_id:
+        membership = db.query(PartyMember).filter(
+            PartyMember.party_id == habit_data.party_id,
+            PartyMember.user_id == current_user.id,
+            PartyMember.is_active == True
+        ).first()
+        
+        if not membership:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You are not a member of this party"
+            )
+    
+    # Create new Habit model instance
+    new_habit = Habit(
+        user_id=current_user.id,
+        party_id=habit_data.party_id,
+        title=habit_data.title,
+        description=habit_data.description,
+        frequency=habit_data.frequency if habit_data.frequency else HabitFrequency.DAILY.value,
+        category=habit_data.category if habit_data.category else HabitCategory.OTHER.value,
+        target_days=habit_data.target_days,
+        reminder_time=habit_data.reminder_time,
+        color=habit_data.color,
+        icon=habit_data.icon,
+        is_active=True,
+        current_streak=0,
+        longest_streak=0
+    )
+    
+    db.add(new_habit)
+    db.commit()
+    db.refresh(new_habit)
+    
+    return new_habit
 
 
 async def get_user_habits(current_user, db: Session, 
                           category: Optional[str] = None,
-                          is_active: Optional[bool] = True):
+                          is_active: Optional[bool] = True) -> List[Habit]:
     """
     Get all habits for the current user.
-    
-    TODO: Build query for user's habits
-    WHY: Only return habits belonging to this user
-    APPROACH: Filter by user_id = current_user.id
-    
-    TODO: Apply optional filters (category, is_active)
-    WHY: Let users filter their habit list
-    APPROACH: Add .filter() for each provided filter
-    
-    TODO: Include today's completion status
-    WHY: Dashboard shows if habit is done today
-    APPROACH: Join with logs table or compute separately
-    
-    TODO: Order habits appropriately
-    WHY: Consistent display order
-    APPROACH: Order by created_at or custom order field
-    
-    TODO: Return list of habits
-    WHY: Frontend displays habit list
     """
-    return {"message": "Get habits - to be implemented"}
+    query = db.query(Habit).filter(Habit.user_id == current_user.id)
+    
+    # Apply optional filters
+    if category:
+        query = query.filter(Habit.category == category)
+    
+    if is_active is not None:
+        query = query.filter(Habit.is_active == is_active)
+    
+    # Order by created_at
+    habits = query.order_by(Habit.created_at.desc()).all()
+    
+    # Add today's completion status for each habit
+    today = date.today()
+    result = []
+    for habit in habits:
+        completed_today = db.query(Log).filter(
+            Log.habit_id == habit.id,
+            Log.log_date == today,
+            Log.completed == True
+        ).first() is not None
+        
+        habit_dict = {
+            "id": habit.id,
+            "user_id": habit.user_id,
+            "party_id": habit.party_id,
+            "title": habit.title,
+            "description": habit.description,
+            "frequency": habit.frequency.value if habit.frequency else None,
+            "category": habit.category.value if habit.category else None,
+            "target_days": habit.target_days,
+            "reminder_time": habit.reminder_time,
+            "color": habit.color,
+            "icon": habit.icon,
+            "is_active": habit.is_active,
+            "current_streak": habit.current_streak,
+            "longest_streak": habit.longest_streak,
+            "created_at": habit.created_at,
+            "updated_at": habit.updated_at,
+            "completed_today": completed_today
+        }
+        result.append(habit_dict)
+    
+    return result
 
 
 async def get_habit_by_id(habit_id: int, current_user, db: Session):
     """
     Get a specific habit by ID.
-    
-    TODO: Query habit by ID
-    WHY: Fetch the specific habit requested
-    APPROACH: db.query(Habit).filter(Habit.id == habit_id)
-    
-    TODO: Verify habit exists
-    WHY: Return 404 if habit not found
-    APPROACH: Check if query returned None
-    
-    TODO: Verify user owns this habit
-    WHY: Users can only view their own habits
-    APPROACH: Check habit.user_id == current_user.id
-    SECURITY: Prevent unauthorized access to other users' habits
-    
-    TODO: Return the habit
-    WHY: Frontend displays habit details
     """
-    return {"message": "Get habit - to be implemented"}
+    habit = db.query(Habit).filter(Habit.id == habit_id).first()
+    
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+    
+    # Verify user owns this habit
+    if habit.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this habit"
+        )
+    
+    # Add completed_today status
+    today = date.today()
+    completed_today = db.query(Log).filter(
+        Log.habit_id == habit.id,
+        Log.log_date == today,
+        Log.completed == True
+    ).first() is not None
+    
+    return {
+        **habit.__dict__,
+        "frequency": habit.frequency.value if habit.frequency else None,
+        "category": habit.category.value if habit.category else None,
+        "completed_today": completed_today
+    }
 
 
-async def update_habit(habit_id: int, habit_data, current_user, db: Session):
+async def update_habit(habit_id: int, habit_data: HabitUpdate, current_user, db: Session):
     """
     Update an existing habit.
-    
-    TODO: Get the existing habit
-    WHY: Need to modify existing record
-    APPROACH: Use get_habit_by_id to fetch and verify ownership
-    
-    TODO: Update only provided fields
-    WHY: Partial updates - only change what was sent
-    APPROACH: Loop through provided fields and update
-    
-    TODO: Commit changes to database
-    WHY: Persist the updates
-    APPROACH: db.commit(), db.refresh()
-    
-    TODO: Return updated habit
-    WHY: Frontend needs updated data
     """
-    return {"message": "Update habit - to be implemented"}
+    habit = db.query(Habit).filter(Habit.id == habit_id).first()
+    
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+    
+    if habit.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update this habit"
+        )
+    
+    # Update only provided fields
+    update_data = habit_data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        if value is not None:
+            setattr(habit, field, value)
+    
+    db.commit()
+    db.refresh(habit)
+    
+    return habit
 
 
 async def delete_habit(habit_id: int, current_user, db: Session):
     """
-    Delete a habit (soft delete recommended).
-    
-    TODO: Get the existing habit
-    WHY: Verify it exists and user owns it
-    APPROACH: Use get_habit_by_id
-    
-    TODO: Decide: soft delete or hard delete?
-    WHY: Soft delete preserves historical data
-    APPROACH: Set is_active = False for soft delete
-    
-    TODO: If hard delete, also delete associated logs
-    WHY: Maintain referential integrity
-    APPROACH: Delete logs first, then habit
-    
-    TODO: Commit the deletion
-    WHY: Persist the change
-    
-    TODO: Return success response
-    WHY: Confirm deletion
+    Delete a habit (soft delete).
     """
-    return {"message": "Delete habit - to be implemented"}
+    habit = db.query(Habit).filter(Habit.id == habit_id).first()
+    
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+    
+    if habit.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to delete this habit"
+        )
+    
+    # Soft delete - set is_active = False
+    habit.is_active = False
+    db.commit()
+    
+    return {"message": "Habit deleted successfully"}
 
 
-async def get_habit_stats(habit_id: int, current_user, db: Session):
+async def get_habit_stats(habit_id: int, current_user, db: Session) -> HabitStats:
     """
     Get statistics for a specific habit.
-    
-    TODO: Verify habit exists and user owns it
-    WHY: Security check
-    
-    TODO: Calculate total completions
-    WHY: Count of times habit was done
-    APPROACH: Count logs where completed = True
-    
-    TODO: Calculate completion rate
-    WHY: Percentage of days completed
-    APPROACH: Completed days / Total days since creation
-    
-    TODO: Get current and longest streak
-    WHY: Streak information for motivation
-    APPROACH: Use streak calculator utility
-    
-    TODO: Get last completion date
-    WHY: Show when habit was last done
-    APPROACH: Query most recent completed log
-    
-    TODO: Return stats object
-    WHY: Frontend displays statistics
     """
-    return {"message": "Get habit stats - to be implemented"}
+    habit = db.query(Habit).filter(Habit.id == habit_id).first()
+    
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+    
+    if habit.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to access this habit"
+        )
+    
+    # Calculate total completions
+    total_completions = db.query(Log).filter(
+        Log.habit_id == habit_id,
+        Log.completed == True
+    ).count()
+    
+    # Calculate total days tracked
+    total_logs = db.query(Log).filter(Log.habit_id == habit_id).count()
+    
+    # Calculate completion rate
+    completion_rate = (total_completions / total_logs * 100) if total_logs > 0 else 0.0
+    
+    # Get last completion date
+    last_completed_log = db.query(Log).filter(
+        Log.habit_id == habit_id,
+        Log.completed == True
+    ).order_by(Log.log_date.desc()).first()
+    
+    return HabitStats(
+        habit_id=habit_id,
+        total_completions=total_completions,
+        completion_rate=completion_rate,
+        current_streak=habit.current_streak,
+        longest_streak=habit.longest_streak,
+        last_completed=last_completed_log.log_date if last_completed_log else None,
+        total_days_tracked=total_logs
+    )
 
+
+async def complete_habit_today(habit_id: int, current_user, db: Session):
+    """
+    Quick complete a habit for today.
+    """
+    habit = db.query(Habit).filter(Habit.id == habit_id).first()
+    
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+    
+    if habit.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to complete this habit"
+        )
+    
+    today = date.today()
+    from datetime import datetime
+    
+    # Check if already logged today
+    existing_log = db.query(Log).filter(
+        Log.habit_id == habit_id,
+        Log.log_date == today
+    ).first()
+    
+    if existing_log:
+        existing_log.completed = True
+        existing_log.completion_time = datetime.utcnow()
+    else:
+        new_log = Log(
+            habit_id=habit_id,
+            user_id=current_user.id,
+            log_date=today,
+            completed=True,
+            completion_time=datetime.utcnow()
+        )
+        db.add(new_log)
+    
+    # Update streak
+    habit.current_streak += 1
+    if habit.current_streak > habit.longest_streak:
+        habit.longest_streak = habit.current_streak
+    
+    db.commit()
+    
+    return {
+        "message": "Habit completed for today",
+        "habit_id": habit_id,
+        "date": today,
+        "current_streak": habit.current_streak,
+        "longest_streak": habit.longest_streak
+    }
