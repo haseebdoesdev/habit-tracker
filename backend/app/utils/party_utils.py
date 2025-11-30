@@ -8,190 +8,240 @@ Helper functions for party/guild features.
 
 from typing import List, Optional
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 import secrets
 import string
 
-# TODO: Import models (Party, PartyMember, PartyGoal)
-# WHY: Need to query party data
+from app.models.party import Party
+from app.models.party_member import PartyMember, PartyRole
+from app.models.party_goal import PartyGoal, GoalStatus
+
+
+# Character set for invite codes - no ambiguous characters (0/O, 1/I/L)
+INVITE_CODE_CHARS = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
 
 
 def generate_invite_code(length: int = 8) -> str:
     """
     Generate a unique invite code for a party.
-    
-    TODO: Create character set for code
-    WHY: Define allowed characters
-    APPROACH: Uppercase letters and digits, no ambiguous chars (0/O, 1/I)
-    
-    TODO: Generate random code
-    WHY: Create unique invite code
-    APPROACH: Use secrets.choice for each character
-    SECURITY: Use secrets module, not random
-    
-    TODO: Return the code
-    WHY: Assign to party
+    Uses cryptographically secure random selection.
     """
-    return ""  # TODO: Implement
+    return ''.join(secrets.choice(INVITE_CODE_CHARS) for _ in range(length))
 
 
 def is_invite_code_unique(code: str, db: Session) -> bool:
     """
-    Check if an invite code is unique.
-    
-    TODO: Query parties for this code
-    WHY: Ensure no duplicate codes
-    APPROACH: Check if any party has this invite_code
-    
-    TODO: Return True if unique
-    WHY: Safe to use this code
+    Check if an invite code is unique in the database.
     """
-    return True  # TODO: Implement
+    existing = db.query(Party).filter(Party.invite_code == code).first()
+    return existing is None
 
 
-def generate_unique_invite_code(db: Session) -> str:
+def generate_unique_invite_code(db: Session, max_attempts: int = 10) -> str:
     """
     Generate a guaranteed unique invite code.
-    
-    TODO: Generate code and check uniqueness
-    WHY: Must be unique in database
-    APPROACH: Loop until unique code found
-    
-    TODO: Limit attempts
-    WHY: Prevent infinite loop
-    APPROACH: Max 10 attempts, then raise error
-    
-    TODO: Return unique code
-    WHY: Safe for new party
+    Raises ValueError if unable to generate unique code after max attempts.
     """
-    return ""  # TODO: Implement
+    for _ in range(max_attempts):
+        code = generate_invite_code()
+        if is_invite_code_unique(code, db):
+            return code
+    
+    # Try longer code as fallback
+    code = generate_invite_code(length=12)
+    if is_invite_code_unique(code, db):
+        return code
+    
+    raise ValueError("Unable to generate unique invite code after maximum attempts")
 
 
 def get_member_role(user_id: int, party_id: int, db: Session) -> Optional[str]:
     """
     Get a user's role in a party.
-    
-    TODO: Query party_members for this user and party
-    WHY: Find membership record
-    APPROACH: Filter by both IDs
-    
-    TODO: Return role if found, None if not a member
-    WHY: Check role or membership
+    Returns None if user is not a member.
     """
-    return None  # TODO: Implement
+    membership = db.query(PartyMember).filter(
+        PartyMember.user_id == user_id,
+        PartyMember.party_id == party_id,
+        PartyMember.is_active == True
+    ).first()
+    
+    if membership and membership.role:
+        return membership.role.value
+    return None
 
 
 def is_party_member(user_id: int, party_id: int, db: Session) -> bool:
     """
-    Check if a user is a member of a party.
-    
-    TODO: Query party_members
-    WHY: Verify membership
-    APPROACH: Check if record exists
-    
-    TODO: Return True/False
-    WHY: Authorization checks
+    Check if a user is an active member of a party.
     """
-    return False  # TODO: Implement
+    membership = db.query(PartyMember).filter(
+        PartyMember.user_id == user_id,
+        PartyMember.party_id == party_id,
+        PartyMember.is_active == True
+    ).first()
+    return membership is not None
 
 
 def is_party_leader(user_id: int, party_id: int, db: Session) -> bool:
     """
     Check if a user is the leader of a party.
-    
-    TODO: Get member role
-    WHY: Check if role is LEADER
-    
-    TODO: Return True if leader
-    WHY: Authorization for leader actions
     """
-    return False  # TODO: Implement
+    role = get_member_role(user_id, party_id, db)
+    return role == PartyRole.LEADER.value
+
+
+def is_party_officer_or_leader(user_id: int, party_id: int, db: Session) -> bool:
+    """
+    Check if a user is an officer or leader of a party.
+    """
+    role = get_member_role(user_id, party_id, db)
+    return role in [PartyRole.LEADER.value, PartyRole.OFFICER.value]
 
 
 def can_create_party_goal(user_id: int, party_id: int, db: Session) -> bool:
     """
     Check if a user can create goals in a party.
-    
-    TODO: Get member role
-    WHY: Check permissions
-    
-    TODO: Define allowed roles
-    WHY: Maybe LEADER and OFFICER can create
-    APPROACH: Check if role is in allowed list
-    
-    TODO: Return permission status
-    WHY: Authorization for goal creation
+    Only leaders and officers can create goals.
     """
-    return False  # TODO: Implement
+    return is_party_officer_or_leader(user_id, party_id, db)
+
+
+def can_manage_members(user_id: int, party_id: int, db: Session) -> bool:
+    """
+    Check if a user can manage party members (kick, promote, etc.).
+    Only leaders can manage members.
+    """
+    return is_party_leader(user_id, party_id, db)
+
+
+def get_party_member_count(party_id: int, db: Session) -> int:
+    """
+    Get the count of active members in a party.
+    """
+    return db.query(PartyMember).filter(
+        PartyMember.party_id == party_id,
+        PartyMember.is_active == True
+    ).count()
 
 
 def calculate_party_points(party_id: int, db: Session) -> int:
     """
     Calculate total points for a party.
-    
-    TODO: Sum contribution points of all members
-    WHY: One source of party points
-    APPROACH: Query and sum PartyMember.contribution_points
-    
-    TODO: Add completed goal rewards
-    WHY: Goals add points when completed
-    APPROACH: Sum reward_points of completed goals
-    
-    TODO: Return total points
-    WHY: Party ranking
+    Combines member contribution points and completed goal rewards.
     """
-    return 0  # TODO: Implement
+    # Sum of member contribution points
+    member_points = db.query(func.coalesce(func.sum(PartyMember.contribution_points), 0)).filter(
+        PartyMember.party_id == party_id,
+        PartyMember.is_active == True
+    ).scalar() or 0
+    
+    # Sum of completed goal reward points
+    goal_points = db.query(func.coalesce(func.sum(PartyGoal.reward_points), 0)).filter(
+        PartyGoal.party_id == party_id,
+        PartyGoal.status == GoalStatus.COMPLETED
+    ).scalar() or 0
+    
+    return int(member_points) + int(goal_points)
 
 
 def update_party_points(party_id: int, db: Session) -> int:
     """
     Update and return party's total points.
-    
-    TODO: Calculate current total
-    WHY: Get accurate count
-    
-    TODO: Update party.total_points
-    WHY: Store for quick access
-    
-    TODO: Commit and return
-    WHY: Persist update
     """
-    return 0  # TODO: Implement
+    party = db.query(Party).filter(Party.id == party_id).first()
+    if not party:
+        return 0
+    
+    total_points = calculate_party_points(party_id, db)
+    party.total_points = total_points
+    db.commit()
+    
+    return total_points
 
 
 def get_party_leaderboard(db: Session, limit: int = 10) -> List[dict]:
     """
     Get top parties by points.
-    
-    TODO: Query parties ordered by total_points
-    WHY: Rank parties
-    APPROACH: Order by DESC, limit results
-    
-    TODO: Include member counts
-    WHY: Show party size
-    
-    TODO: Return leaderboard data
-    WHY: Display rankings
     """
-    return []  # TODO: Implement
+    parties = db.query(Party).filter(
+        Party.is_active == True
+    ).order_by(Party.total_points.desc()).limit(limit).all()
+    
+    leaderboard = []
+    for rank, party in enumerate(parties, 1):
+        member_count = get_party_member_count(party.id, db)
+        leaderboard.append({
+            "rank": rank,
+            "party_id": party.id,
+            "party_name": party.name,
+            "total_points": party.total_points,
+            "member_count": member_count,
+            "avatar_url": party.avatar_url
+        })
+    
+    return leaderboard
 
 
-def add_contribution_points(user_id: int, party_id: int, 
-                            points: int, db: Session) -> int:
+def add_contribution_points(user_id: int, party_id: int, points: int, db: Session) -> int:
     """
     Add contribution points to a party member.
-    
-    TODO: Get member record
-    WHY: Update their points
-    
-    TODO: Add points
-    WHY: Increase contribution
-    APPROACH: member.contribution_points += points
-    
-    TODO: Update party total
-    WHY: Keep party points in sync
-    
-    TODO: Commit and return new total
-    WHY: Persist and confirm
+    Returns the member's new total contribution points.
     """
-    return 0  # TODO: Implement
+    membership = db.query(PartyMember).filter(
+        PartyMember.user_id == user_id,
+        PartyMember.party_id == party_id,
+        PartyMember.is_active == True
+    ).first()
+    
+    if not membership:
+        return 0
+    
+    membership.contribution_points += points
+    
+    # Also update party total points
+    update_party_points(party_id, db)
+    
+    db.commit()
+    
+    return membership.contribution_points
 
+
+def get_party_by_invite_code(invite_code: str, db: Session) -> Optional[Party]:
+    """
+    Get a party by its invite code.
+    """
+    return db.query(Party).filter(
+        Party.invite_code == invite_code,
+        Party.is_active == True
+    ).first()
+
+
+def can_join_party(party: Party, db: Session) -> tuple[bool, str]:
+    """
+    Check if a party can accept new members.
+    Returns (can_join, reason).
+    """
+    if not party.is_active:
+        return False, "Party is no longer active"
+    
+    member_count = get_party_member_count(party.id, db)
+    if party.max_members and member_count >= party.max_members:
+        return False, "Party is full"
+    
+    return True, "OK"
+
+
+def get_user_parties(user_id: int, db: Session) -> List[Party]:
+    """
+    Get all parties a user is an active member of.
+    """
+    party_ids = db.query(PartyMember.party_id).filter(
+        PartyMember.user_id == user_id,
+        PartyMember.is_active == True
+    ).subquery()
+    
+    return db.query(Party).filter(
+        Party.id.in_(party_ids),
+        Party.is_active == True
+    ).all()
