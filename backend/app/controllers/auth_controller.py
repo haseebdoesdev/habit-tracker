@@ -10,143 +10,201 @@ This is one of the most critical files for security.
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
-# TODO: Import your User model
-# WHY: Need to create and query user records
-from app.models.user import User
-# TODO: Import your user schemas (UserCreate, UserLogin, Token)
-# WHY: Type hints and validation
+from app.models.user import User, UserType
+from app.schemas.user import UserCreate, UserLogin, Token, UserResponse
+from app.utils.security import (
+    hash_password,
+    verify_password,
+    create_access_token,
+    decode_access_token
+)
 
-# TODO: Import security utilities (password hashing, JWT creation)
-# WHY: Secure password storage and token generation
 
-
-async def register_user(user_data, db: Session):
+async def register_user(user_data: UserCreate, db: Session):
     """
     Register a new user account.
-    
-    TODO: Check if email already exists in database
-    WHY: Prevent duplicate accounts with same email
-    APPROACH: Query database for existing user with this email
-    SECURITY: Use case-insensitive email comparison
-    
-    TODO: Check if username is already taken
-    WHY: Usernames should be unique
-    APPROACH: Query database for existing username
-    
-    TODO: Hash the user's password before storing
-    WHY: NEVER store plain text passwords
-    APPROACH: Use bcrypt from your security utilities
-    SECURITY: Always hash passwords - this is critical
-    
-    TODO: Create new user record in database
-    WHY: Persist the user account
-    APPROACH: Create User model instance with hashed password
-    
-    TODO: Commit the transaction to save the user
-    WHY: Actually store the data in PostgreSQL
-    APPROACH: Use db.commit() and db.refresh()
-    
-    TODO: Return success response (but NOT the password hash)
-    WHY: Confirm registration was successful
-    SECURITY: Never return password hash in response
     """
-    return {"message": "Register user - to be implemented"}
+    # Check if passwords match
+    if user_data.password != user_data.password_confirm:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passwords do not match"
+        )
+    
+    # Check if email already exists (case-insensitive)
+    existing_email = db.query(User).filter(
+        User.email.ilike(user_data.email)
+    ).first()
+    if existing_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Email already registered"
+        )
+    
+    # Check if username is already taken
+    existing_username = db.query(User).filter(
+        User.username == user_data.username
+    ).first()
+    if existing_username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already taken"
+        )
+    
+    # Hash the password
+    hashed_pw = hash_password(user_data.password)
+    
+    # Create new user record
+    new_user = User(
+        email=user_data.email.lower(),
+        username=user_data.username,
+        hashed_password=hashed_pw,
+        user_type=UserType.REGULAR,
+        is_active=True
+    )
+    
+    # Save to database
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    
+    # Return success response (without password hash)
+    return {
+        "message": "User registered successfully",
+        "user": {
+            "id": new_user.id,
+            "email": new_user.email,
+            "username": new_user.username,
+            "user_type": new_user.user_type.value,
+            "is_active": new_user.is_active,
+            "created_at": new_user.created_at
+        }
+    }
 
 
-async def login_user(login_data, db: Session):
+async def login_user(login_data: UserLogin, db: Session):
     """
     Authenticate user and return JWT token.
-    
-    TODO: Find user by email in database
-    WHY: Need to verify they have an account
-    APPROACH: Query users table by email
-    SECURITY: Don't reveal if email exists in error messages
-    
-    TODO: Verify the provided password against stored hash
-    WHY: Confirm user knows the correct password
-    APPROACH: Use bcrypt's verify function from security utilities
-    SECURITY: Use constant-time comparison to prevent timing attacks
-    
-    TODO: Check if user account is active
-    WHY: Disabled accounts should not be able to log in
-    APPROACH: Check is_active field on user
-    
-    TODO: Generate JWT access token
-    WHY: Token used for authenticating subsequent requests
-    APPROACH: Use your JWT creation utility with user ID in payload
-    SECURITY: Set appropriate expiration time
-    
-    TODO: Return token response
-    WHY: Frontend stores this token for authentication
-    APPROACH: Return Token schema with access_token and token_type
     """
-    return {"message": "Login user - to be implemented"}
+    # Find user by email (case-insensitive)
+    user = db.query(User).filter(
+        User.email.ilike(login_data.email)
+    ).first()
+    
+    # Generic error message to not reveal if email exists
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Invalid email or password",
+        headers={"WWW-Authenticate": "Bearer"}
+    )
+    
+    if not user:
+        raise credentials_exception
+    
+    # Verify password
+    if not verify_password(login_data.password, user.hashed_password):
+        raise credentials_exception
+    
+    # Check if account is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is disabled"
+        )
+    
+    # Generate JWT access token
+    access_token = create_access_token(data={"sub": str(user.id)})
+    
+    return Token(access_token=access_token, token_type="Bearer")
 
 
 async def get_current_user(token: str, db: Session):
     """
     Validate JWT token and return current user.
-    
-    TODO: Decode the JWT token
-    WHY: Extract user information from token
-    APPROACH: Use your JWT decode utility
-    SECURITY: Handle expired and invalid tokens properly
-    
-    TODO: Extract user ID from token payload
-    WHY: Identify which user the token belongs to
-    APPROACH: Get the subject or user_id from decoded token
-    
-    TODO: Fetch user from database
-    WHY: Get current user data
-    APPROACH: Query by user ID from token
-    
-    TODO: Verify user still exists and is active
-    WHY: User might have been deleted or deactivated
-    APPROACH: Check if user exists and is_active is True
-    
-    TODO: Return the user object
-    WHY: Other endpoints need access to current user
-    APPROACH: Return the User model instance
     """
-    return {"message": "Get current user - to be implemented"}
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"}
+    )
+    
+    # Decode the JWT token
+    payload = decode_access_token(token)
+    if not payload:
+        raise credentials_exception
+    
+    # Extract user ID from token payload
+    user_id_str = payload.get("sub")
+    if user_id_str is None:
+        raise credentials_exception
+    
+    try:
+        user_id = int(user_id_str)
+    except ValueError:
+        raise credentials_exception
+    
+    # Fetch user from database
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    # Verify user exists and is active
+    if user is None:
+        raise credentials_exception
+    
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is disabled"
+        )
+    
+    return user
 
 
-async def refresh_token(current_user, db: Session):
+async def refresh_token(current_user: User, db: Session):
     """
     Issue a new JWT token for authenticated user.
-    
-    TODO: Generate a new JWT token for the user
-    WHY: Tokens expire, users need to refresh them
-    APPROACH: Create new token with current user's ID
-    
-    TODO: Return new token response
-    WHY: Frontend replaces old token with new one
     """
-    return {"message": "Refresh token - to be implemented"}
+    # Generate a new JWT token for the user
+    access_token = create_access_token(data={"sub": str(current_user.id)})
+    
+    return Token(access_token=access_token, token_type="Bearer")
 
 
-async def update_password(current_user, password_data, db: Session):
+async def update_password(current_user: User, password_data, db: Session):
     """
     Update user's password.
     
-    TODO: Verify current password is correct
-    WHY: Confirm user knows their existing password
-    SECURITY: Always require current password for password change
-    
-    TODO: Validate new password meets requirements
-    WHY: Enforce password strength
-    APPROACH: Check length, complexity as needed
-    
-    TODO: Hash the new password
-    WHY: Never store plain text
-    APPROACH: Use bcrypt hashing
-    
-    TODO: Update user's password in database
-    WHY: Persist the change
-    APPROACH: Update user.hashed_password and commit
-    
-    TODO: Return success response
-    WHY: Confirm password was changed
+    Expects password_data to have:
+    - current_password: str
+    - new_password: str
+    - new_password_confirm: str
     """
-    return {"message": "Update password - to be implemented"}
-
+    # Verify current password is correct
+    if not verify_password(password_data.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
+        )
+    
+    # Validate new passwords match
+    if password_data.new_password != password_data.new_password_confirm:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New passwords do not match"
+        )
+    
+    # Validate new password meets requirements (minimum 8 characters)
+    if len(password_data.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters long"
+        )
+    
+    # Hash the new password
+    new_hashed_password = hash_password(password_data.new_password)
+    
+    # Update user's password in database
+    current_user.hashed_password = new_hashed_password
+    db.commit()
+    db.refresh(current_user)
+    
+    return {"message": "Password updated successfully"}
