@@ -7,142 +7,97 @@ Pydantic schemas for habit log/completion validation.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime, date
 
 
 class LogBase(BaseModel):
     """
     Base schema with common log fields.
-    
-    TODO: Define common log fields
-    WHY: Shared between create and response
     """
-    
-    # TODO: Add notes field (optional)
-    # WHY: Users can add context to their completion
-    
-    # TODO: Add mood/rating field (optional)
-    # WHY: Track how user felt about the habit
-    # APPROACH: Integer 1-5 or similar scale
-    
-    # TODO: Add duration_minutes field (optional)
-    # WHY: Some habits track time spent
-    
-    pass
+    notes: Optional[str] = None
+    mood: Optional[int] = Field(None, ge=1, le=5)  # 1-5 scale
+    duration_minutes: Optional[int] = Field(None, ge=0)
 
 
 class LogCreate(LogBase):
     """
     Schema for logging a habit completion.
-    
-    TODO: Define fields for creating a log entry
-    WHY: Validate completion data
     """
-    
-    # TODO: Add habit_id field
-    # WHY: Identify which habit is being logged
-    
-    # TODO: Add log_date field (optional)
-    # WHY: Allow logging for past dates
-    # APPROACH: Default to today if not provided
-    
-    # TODO: Add completed field
-    # WHY: Whether the habit was done or skipped
-    # APPROACH: Boolean, default True
-    
-    pass
+    habit_id: int
+    log_date: Optional[date] = None  # Defaults to today if not provided
+    completed: bool = True
 
 
 class LogUpdate(BaseModel):
     """
     Schema for updating a log entry.
-    
-    TODO: Define updatable fields
-    WHY: Allow corrections to log entries
     """
-    
-    # TODO: Add optional completed field
-    # WHY: Fix mistakes in logging
-    
-    # TODO: Add optional notes field
-    # WHY: Update completion notes
-    
-    # TODO: Add optional mood field
-    
-    # TODO: Add optional duration_minutes field
-    
-    pass
+    completed: Optional[bool] = None
+    notes: Optional[str] = None
+    mood: Optional[int] = Field(None, ge=1, le=5)
+    duration_minutes: Optional[int] = Field(None, ge=0)
 
 
 class LogResponse(LogBase):
     """
     Schema for log data in responses.
-    
-    TODO: Define response fields
-    WHY: Control what log data is returned
     """
-    
-    # TODO: Add id field
-    
-    # TODO: Add habit_id field
-    
-    # TODO: Add user_id field
-    
-    # TODO: Add log_date field
-    
-    # TODO: Add completed field
-    
-    # TODO: Add completion_time field (optional)
-    # WHY: When exactly the habit was completed
-    
-    # TODO: Add created_at field
-    
+    id: int
+    habit_id: int
+    user_id: int
+    log_date: date
+    completed: bool
+    completion_time: Optional[datetime] = None
+    created_at: datetime
+
     class Config:
         from_attributes = True
+
+
+class LogWithHabitInfo(LogResponse):
+    """
+    Schema for log with habit details.
+    """
+    habit_title: str
+    habit_category: Optional[str] = None
+    habit_color: Optional[str] = None
+    habit_icon: Optional[str] = None
 
 
 class DailyLogSummary(BaseModel):
     """
     Schema for daily log summary.
-    
-    TODO: Define summary fields
-    WHY: Overview of all habits for a day
     """
-    
-    # TODO: Add date field
-    
-    # TODO: Add total_habits field
-    # WHY: How many habits were tracked
-    
-    # TODO: Add completed_habits field
-    # WHY: How many were completed
-    
-    # TODO: Add completion_percentage field
-    
-    # TODO: Add logs list
-    # WHY: Individual log entries for the day
-    
-    pass
+    date: date
+    total_habits: int = 0
+    completed_habits: int = 0
+    completion_percentage: float = 0.0
+    logs: List[LogResponse] = []
 
 
 class WeeklyLogSummary(BaseModel):
     """
     Schema for weekly log summary.
-    
-    TODO: Define weekly summary fields
-    WHY: Week-over-week progress tracking
     """
-    
-    # TODO: Add week_start and week_end fields
-    
-    # TODO: Add daily_summaries list
-    # WHY: Breakdown by day
-    
-    # TODO: Add weekly_completion_rate field
-    
-    # TODO: Add best_day field
-    # WHY: Which day had highest completion
-    
-    pass
+    week_start: date
+    week_end: date
+    daily_summaries: List[DailyLogSummary] = []
+    weekly_completion_rate: float = 0.0
+    total_completions: int = 0
+    total_habits_tracked: int = 0
+    best_day: Optional[date] = None
+    best_day_completion_rate: float = 0.0
 
+
+class MonthlyLogSummary(BaseModel):
+    """
+    Schema for monthly log summary.
+    """
+    month: int
+    year: int
+    total_completions: int = 0
+    total_possible: int = 0
+    completion_rate: float = 0.0
+    weekly_summaries: List[WeeklyLogSummary] = []
+    streak_info: Optional[dict] = None

@@ -7,81 +7,50 @@ Defines the PartyMember table - the junction/association table
 between Users and Parties with additional membership data.
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
 
-# TODO: Import Base from your database module
+from app.database import Base
 
 
 class PartyRole(enum.Enum):
     """
     Enum for member roles within a party.
-    
-    TODO: Define role values
-    WHY: Different roles have different permissions
-    APPROACH: Add values like LEADER, OFFICER, MEMBER
     """
-    pass
+    LEADER = "LEADER"
+    OFFICER = "OFFICER"
+    MEMBER = "MEMBER"
 
 
-class PartyMember:
+class PartyMember(Base):
     """
     Party membership association model.
     
     This is a junction table that links Users to Parties,
     with additional information about their membership.
-    
-    TODO: Make this class inherit from Base
     """
     
-    # TODO: Define the table name
-    # APPROACH: Set __tablename__ = "party_members"
+    __tablename__ = "party_members"
     
-    # TODO: Add primary key column (id)
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    party_id = Column(Integer, ForeignKey("parties.id"), nullable=False)
     
-    # TODO: Add user_id foreign key column
-    # WHY: Links to the user who is a member
-    # APPROACH: Integer with ForeignKey("users.id")
+    role = Column(Enum(PartyRole, name="party_role_type"), default=PartyRole.MEMBER)
     
-    # TODO: Add party_id foreign key column
-    # WHY: Links to the party they belong to
-    # APPROACH: Integer with ForeignKey("parties.id")
+    joined_at = Column(DateTime, default=datetime.utcnow)
+    contribution_points = Column(Integer, default=0)
     
-    # TODO: Add role column using Enum
-    # WHY: Different members have different permissions
-    # APPROACH: Use PartyRole enum
+    is_active = Column(Boolean, default=True)
+    last_active_at = Column(DateTime, default=datetime.utcnow)
     
-    # TODO: Add joined_at column
-    # WHY: Track when the user joined the party
-    # APPROACH: DateTime with default to current time
+    # Relationships
+    user = relationship("User", back_populates="party_memberships")
+    party = relationship("Party", back_populates="members")
     
-    # TODO: Add contribution_points column
-    # WHY: Track individual contribution to party
-    # APPROACH: Integer with default=0
-    
-    # TODO: Add is_active column
-    # WHY: Track if member is currently active
-    # APPROACH: Boolean with default=True
-    
-    # TODO: Add last_active_at column
-    # WHY: Track engagement levels
-    # APPROACH: DateTime column
-    
-    # ==================== RELATIONSHIPS ====================
-    
-    # TODO: Add relationship to user
-    # user = relationship("User", back_populates="party_memberships")
-    
-    # TODO: Add relationship to party
-    # party = relationship("Party", back_populates="members")
-    
-    # ==================== CONSTRAINTS ====================
-    
-    # TODO: Add unique constraint on user_id + party_id
-    # WHY: A user can only be a member of a party once
-    # APPROACH: Use __table_args__ with UniqueConstraint
-    
-    pass
-
+    # Constraints - user can only be a member of a party once
+    __table_args__ = (
+        UniqueConstraint('user_id', 'party_id', name='uq_user_party'),
+    )

@@ -9,62 +9,106 @@ It initializes the FastAPI app and registers all routers.
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
+import logging
 
-# TODO: Import your settings from config
-# WHY: Need configuration values like CORS origins
+from app.config import settings
+from app.database import engine, Base
+
+# Import all routers
+from app.routers import auth, habits, logs, analytics, parties, party_goals, calendar, ai, accountability
 
 
-# TODO: Import all routers from the routers package
-# WHY: Each router handles a group of related endpoints
-# APPROACH: Import each router module (auth, habits, logs, etc.)
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
-# TODO: Create the FastAPI application instance
-# WHY: This is the core object that handles all HTTP requests
-# APPROACH: Instantiate FastAPI with title, description, and version
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Lifespan context manager for startup and shutdown events.
+    """
+    # Startup
+    logger.info("Starting Habit Tracker API...")
+    
+    # Create database tables if they don't exist
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables verified/created successfully")
+    except Exception as e:
+        logger.error(f"Database initialization error: {e}")
+    
+    logger.info("Habit Tracker API started successfully!")
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down Habit Tracker API...")
+    logger.info("Cleanup completed. Goodbye!")
+
+
+# Create the FastAPI application instance
 app = FastAPI(
     title="Habit Tracker API",
-    description="AI-powered habit tracking with party/guild features",
-    version="1.0.0"
+    description="""
+    🎯 AI-powered habit tracking with party/guild features.
+    
+    ## Features
+    - **User Authentication** - JWT-based secure authentication
+    - **Habit Management** - Create, track, and analyze habits
+    - **Completion Logging** - Daily habit logging with streaks
+    - **Analytics** - Statistics, heatmaps, and trends
+    - **Parties/Guilds** - Group habit tracking with leaderboards
+    - **Party Goals** - Collaborative challenges
+    - **AI Suggestions** - Gemini-powered habit recommendations
+    - **Calendar Integration** - Google Calendar sync
+    - **Accountability Partners** - Partner up for motivation
+    
+    ## Team
+    - **HASEEB** - Auth, Analytics, Parties
+    - **NOUMAN** - Habits, Party Goals, AI
+    - **OMAMAH** - Logs, Calendar, Accountability
+    """,
+    version="1.0.0",
+    lifespan=lifespan,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json"
 )
 
 
-# TODO: Configure CORS middleware
-# WHY: Allows your React frontend to make requests to this API
-# APPROACH: Add CORSMiddleware with allowed origins from settings
-# SECURITY: In production, only allow your specific frontend domain
-"""
+# Configure CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    # TODO: Set allow_origins from your settings
-    # TODO: Configure allow_credentials, allow_methods, allow_headers
+    allow_origins=settings.CORS_ORIGINS if settings.CORS_ORIGINS else ["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-"""
 
 
-# TODO: Include all routers with appropriate prefixes
-# WHY: Organizes your API endpoints under logical URL paths
-# APPROACH: Use app.include_router() for each router with prefix and tags
-# 
-# Example structure:
-# - /api/auth -> authentication endpoints [HASEEB]
-# - /api/habits -> habit CRUD endpoints [NOUMAN]
-# - /api/logs -> habit logging endpoints [OMAMAH]
-# - /api/analytics -> statistics endpoints [HASEEB]
-# - /api/ai -> AI suggestion endpoints [NOUMAN]
-# - /api/calendar -> Google Calendar endpoints [OMAMAH]
-# - /api/parties -> party/guild endpoints [HASEEB]
-# - /api/party-goals -> party goals endpoints [NOUMAN]
-# - /api/accountability -> partner endpoints [OMAMAH]
+# Include all routers with /api prefix
+app.include_router(auth.router, prefix="/api")
+app.include_router(habits.router, prefix="/api")
+app.include_router(logs.router, prefix="/api")
+app.include_router(analytics.router, prefix="/api")
+app.include_router(parties.router, prefix="/api")
+app.include_router(party_goals.router, prefix="/api")
+app.include_router(calendar.router, prefix="/api")
+app.include_router(ai.router, prefix="/api")
+app.include_router(accountability.router, prefix="/api")
 
 
 @app.get("/")
 async def root():
-    """Health check endpoint."""
+    """Root endpoint with API information."""
     return {
-        "message": "Habit Tracker API is running",
+        "message": "🎯 Habit Tracker API is running",
+        "version": "1.0.0",
         "docs": "/docs",
-        "version": "1.0.0"
+        "redoc": "/redoc",
+        "health": "/health"
     }
 
 
@@ -72,22 +116,44 @@ async def root():
 async def health_check():
     """
     Health check endpoint for monitoring.
-    
-    TODO: Add database connectivity check
-    WHY: Helps detect if the API is healthy and can reach the database
-    APPROACH: Try a simple database query and return status accordingly
+    Verifies API and database connectivity.
     """
-    return {"status": "healthy"}
+    from app.database import SessionLocal
+    
+    health_status = {
+        "status": "healthy",
+        "api": "ok",
+        "database": "unknown"
+    }
+    
+    # Check database connectivity
+    try:
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db.close()
+        health_status["database"] = "ok"
+    except Exception as e:
+        health_status["database"] = "error"
+        health_status["status"] = "degraded"
+        logger.error(f"Database health check failed: {e}")
+    
+    return health_status
 
 
-# TODO: Add startup event handler
-# WHY: Run initialization code when the server starts
-# APPROACH: Use @app.on_event("startup") decorator
-# Example uses: Create database tables, verify external API connections
-
-
-# TODO: Add shutdown event handler  
-# WHY: Clean up resources when the server stops
-# APPROACH: Use @app.on_event("shutdown") decorator
-# Example uses: Close database connections, flush caches
-
+@app.get("/api")
+async def api_info():
+    """API version and available endpoints."""
+    return {
+        "version": "1.0.0",
+        "endpoints": {
+            "auth": "/api/auth",
+            "habits": "/api/habits",
+            "logs": "/api/logs",
+            "analytics": "/api/analytics",
+            "parties": "/api/parties",
+            "party_goals": "/api/party-goals",
+            "calendar": "/api/calendar",
+            "ai": "/api/ai",
+            "accountability": "/api/accountability"
+        }
+    }

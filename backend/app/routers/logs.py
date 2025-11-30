@@ -8,13 +8,15 @@ Defines habit log/completion API endpoints.
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import Optional
-from datetime import date
+from typing import Optional, List
+from datetime import date, datetime, timedelta
 
-# TODO: Import dependencies
-# TODO: Import log controller
-# TODO: Import log schemas
-# TODO: Import auth middleware
+from app.database import get_db
+from app.schemas.log import LogCreate, LogUpdate, LogResponse, DailyLogSummary, WeeklyLogSummary
+from app.middleware.auth import get_current_active_user
+from app.models.user import User
+from app.models.habit import Habit
+from app.models.log import Log
 
 
 router = APIRouter(
@@ -23,145 +25,295 @@ router = APIRouter(
 )
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_log():
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=LogResponse)
+async def create_log(
+    log_data: LogCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Log a habit completion.
-    
-    TODO: Add function signature with LogCreate schema
-    WHY: Accept completion data
-    APPROACH: def create_log(log_data: LogCreate,
-                             db: Session = Depends(get_db),
-                             current_user = Depends(get_current_user))
-    
-    TODO: Call log controller's log_habit_completion function
-    WHY: Record completion and update streaks
-    
-    TODO: Return created log
-    WHY: Confirm logging
     """
-    return {"message": "Create log endpoint - to be implemented"}
+    # Verify habit exists and belongs to user
+    habit = db.query(Habit).filter(
+        Habit.id == log_data.habit_id,
+        Habit.user_id == current_user.id
+    ).first()
+    
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+    
+    log_date = log_data.log_date or date.today()
+    
+    # Check if log already exists for this date
+    existing_log = db.query(Log).filter(
+        Log.habit_id == log_data.habit_id,
+        Log.log_date == log_date
+    ).first()
+    
+    if existing_log:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Log already exists for this date. Use PUT to update."
+        )
+    
+    # Create log
+    new_log = Log(
+        habit_id=log_data.habit_id,
+        user_id=current_user.id,
+        log_date=log_date,
+        completed=log_data.completed,
+        completion_time=datetime.utcnow() if log_data.completed else None,
+        notes=log_data.notes,
+        mood=log_data.mood,
+        duration_minutes=log_data.duration_minutes
+    )
+    
+    db.add(new_log)
+    
+    # Update streak if completed
+    if log_data.completed:
+        habit.current_streak += 1
+        if habit.current_streak > habit.longest_streak:
+            habit.longest_streak = habit.current_streak
+    
+    db.commit()
+    db.refresh(new_log)
+    
+    return new_log
 
 
-@router.get("/habit/{habit_id}")
-async def get_habit_logs(habit_id: int):
+@router.get("/habit/{habit_id}", response_model=List[LogResponse])
+async def get_habit_logs(
+    habit_id: int,
+    start_date: Optional[date] = Query(None, description="Start date filter"),
+    end_date: Optional[date] = Query(None, description="End date filter"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Get logs for a specific habit.
-    
-    TODO: Add function signature with date filters
-    WHY: Support date range queries
-    APPROACH: Add Query params for start_date, end_date
-    
-    TODO: Add auth dependency
-    WHY: Verify habit ownership
-    SECURITY: Only owner sees logs
-    
-    TODO: Call log controller's get_habit_logs function
-    WHY: Fetch filtered logs
-    
-    TODO: Return log list
-    WHY: History display
     """
-    return {"message": "Get habit logs endpoint - to be implemented"}
+    # Verify habit ownership
+    habit = db.query(Habit).filter(
+        Habit.id == habit_id,
+        Habit.user_id == current_user.id
+    ).first()
+    
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+    
+    query = db.query(Log).filter(Log.habit_id == habit_id)
+    
+    if start_date:
+        query = query.filter(Log.log_date >= start_date)
+    if end_date:
+        query = query.filter(Log.log_date <= end_date)
+    
+    logs = query.order_by(Log.log_date.desc()).all()
+    
+    return logs
 
 
-@router.get("/{log_id}")
-async def get_log(log_id: int):
+@router.get("/{log_id}", response_model=LogResponse)
+async def get_log(
+    log_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Get a specific log entry.
-    
-    TODO: Add function signature
-    WHY: Accept log ID
-    
-    TODO: Add auth dependency
-    WHY: Verify access
-    
-    TODO: Call log controller's get_log_by_id function
-    WHY: Fetch log with verification
-    
-    TODO: Return log
-    WHY: Log detail view
     """
-    return {"message": "Get log endpoint - to be implemented"}
+    log = db.query(Log).filter(
+        Log.id == log_id,
+        Log.user_id == current_user.id
+    ).first()
+    
+    if not log:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Log not found"
+        )
+    
+    return log
 
 
-@router.put("/{log_id}")
-async def update_log(log_id: int):
+@router.put("/{log_id}", response_model=LogResponse)
+async def update_log(
+    log_id: int,
+    log_data: LogUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Update a log entry.
-    
-    TODO: Add function signature with LogUpdate schema
-    WHY: Accept update data
-    
-    TODO: Add auth dependency
-    WHY: Verify ownership
-    
-    TODO: Call log controller's update_log function
-    WHY: Apply updates and recalculate streaks
-    
-    TODO: Return updated log
-    WHY: Confirm changes
     """
-    return {"message": "Update log endpoint - to be implemented"}
+    log = db.query(Log).filter(
+        Log.id == log_id,
+        Log.user_id == current_user.id
+    ).first()
+    
+    if not log:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Log not found"
+        )
+    
+    # Track if completion status changed
+    was_completed = log.completed
+    
+    # Update fields
+    if log_data.completed is not None:
+        log.completed = log_data.completed
+        if log_data.completed and not was_completed:
+            log.completion_time = datetime.utcnow()
+    
+    if log_data.notes is not None:
+        log.notes = log_data.notes
+    
+    if log_data.mood is not None:
+        log.mood = log_data.mood
+    
+    if log_data.duration_minutes is not None:
+        log.duration_minutes = log_data.duration_minutes
+    
+    db.commit()
+    db.refresh(log)
+    
+    return log
 
 
 @router.delete("/{log_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_log(log_id: int):
+async def delete_log(
+    log_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Delete a log entry.
-    
-    TODO: Add function signature
-    WHY: Accept log ID
-    
-    TODO: Add auth dependency
-    WHY: Verify ownership
-    
-    TODO: Call log controller's delete_log function
-    WHY: Remove log and update streaks
-    
-    TODO: Return no content
-    WHY: Standard delete response
     """
+    log = db.query(Log).filter(
+        Log.id == log_id,
+        Log.user_id == current_user.id
+    ).first()
+    
+    if not log:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Log not found"
+        )
+    
+    db.delete(log)
+    db.commit()
+    
     return None
 
 
-@router.get("/daily/{log_date}")
-async def get_daily_summary(log_date: date):
+@router.get("/daily/{log_date}", response_model=DailyLogSummary)
+async def get_daily_summary(
+    log_date: date,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Get summary of all habits for a specific date.
-    
-    TODO: Add function signature
-    WHY: Accept date parameter
-    
-    TODO: Add auth dependency
-    WHY: Get current user's data
-    
-    TODO: Call log controller's get_daily_summary function
-    WHY: Aggregate daily data
-    
-    TODO: Return daily summary
-    WHY: Dashboard view
     """
-    return {"message": "Get daily summary endpoint - to be implemented"}
+    # Get user's active habits
+    habits = db.query(Habit).filter(
+        Habit.user_id == current_user.id,
+        Habit.is_active == True
+    ).all()
+    
+    total_habits = len(habits)
+    
+    # Get logs for this date
+    logs = db.query(Log).filter(
+        Log.user_id == current_user.id,
+        Log.log_date == log_date
+    ).all()
+    
+    completed_habits = sum(1 for log in logs if log.completed)
+    completion_percentage = (completed_habits / total_habits * 100) if total_habits > 0 else 0.0
+    
+    return DailyLogSummary(
+        date=log_date,
+        total_habits=total_habits,
+        completed_habits=completed_habits,
+        completion_percentage=completion_percentage,
+        logs=logs
+    )
 
 
 @router.get("/weekly")
-async def get_weekly_summary():
+async def get_weekly_summary(
+    week_start: Optional[date] = Query(None, description="Start of week (defaults to current week)"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Get summary for current or specified week.
-    
-    TODO: Add function signature with optional week_start
-    WHY: Support viewing different weeks
-    APPROACH: Add Query param for week_start date
-    
-    TODO: Add auth dependency
-    WHY: Get current user's data
-    
-    TODO: Call log controller's get_weekly_summary function
-    WHY: Aggregate weekly data
-    
-    TODO: Return weekly summary
-    WHY: Weekly analytics
     """
-    return {"message": "Get weekly summary endpoint - to be implemented"}
-
+    if week_start is None:
+        # Default to start of current week (Monday)
+        today = date.today()
+        week_start = today - timedelta(days=today.weekday())
+    
+    week_end = week_start + timedelta(days=6)
+    
+    # Get user's active habits
+    habits = db.query(Habit).filter(
+        Habit.user_id == current_user.id,
+        Habit.is_active == True
+    ).all()
+    
+    total_habits = len(habits)
+    
+    # Build daily summaries
+    daily_summaries = []
+    total_completions = 0
+    best_day = None
+    best_day_rate = 0.0
+    
+    for i in range(7):
+        day = week_start + timedelta(days=i)
+        
+        logs = db.query(Log).filter(
+            Log.user_id == current_user.id,
+            Log.log_date == day
+        ).all()
+        
+        completed = sum(1 for log in logs if log.completed)
+        total_completions += completed
+        rate = (completed / total_habits * 100) if total_habits > 0 else 0.0
+        
+        if rate > best_day_rate:
+            best_day_rate = rate
+            best_day = day
+        
+        daily_summaries.append({
+            "date": day,
+            "total_habits": total_habits,
+            "completed_habits": completed,
+            "completion_percentage": rate,
+            "logs": logs
+        })
+    
+    total_possible = total_habits * 7
+    weekly_rate = (total_completions / total_possible * 100) if total_possible > 0 else 0.0
+    
+    return {
+        "week_start": week_start,
+        "week_end": week_end,
+        "daily_summaries": daily_summaries,
+        "weekly_completion_rate": weekly_rate,
+        "total_completions": total_completions,
+        "total_habits_tracked": total_habits,
+        "best_day": best_day,
+        "best_day_completion_rate": best_day_rate
+    }
