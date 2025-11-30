@@ -11,10 +11,10 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Text, Bool
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
-# TODO: Import Base from your database module
+from app.database import Base
 
 
-class Party:
+class Party(Base):
     """
     Party/Guild model for group habit tracking.
     
@@ -22,67 +22,30 @@ class Party:
     - Share habits and goals
     - Compete on leaderboards
     - Chat and support each other
-    
-    TODO: Make this class inherit from Base
     """
     
-    # TODO: Define the table name
-    # APPROACH: Set __tablename__ = "parties"
+    __tablename__ = "parties"
     
-    # TODO: Add primary key column (id)
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(100), nullable=False)
+    description = Column(Text, nullable=True)
     
-    # TODO: Add name column
-    # WHY: The display name of the party
-    # APPROACH: String column with max length
+    creator_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    invite_code = Column(String(20), unique=True, nullable=False)
     
-    # TODO: Add description column
-    # WHY: Explain the party's purpose and goals
-    # APPROACH: Text column, nullable=True
+    is_public = Column(Boolean, default=False)
+    max_members = Column(Integer, default=50)
     
-    # TODO: Add creator_id foreign key column
-    # WHY: Track who created the party
-    # APPROACH: Integer with ForeignKey("users.id")
+    avatar_url = Column(String(500), nullable=True)
+    total_points = Column(Integer, default=0)
     
-    # TODO: Add invite_code column
-    # WHY: Unique code for inviting new members
-    # APPROACH: String column that is unique
-    # SECURITY: Generate random codes, not sequential
+    is_active = Column(Boolean, default=True)
     
-    # TODO: Add is_public column
-    # WHY: Public parties can be browsed and joined freely
-    # APPROACH: Boolean with default=False
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
-    # TODO: Add max_members column
-    # WHY: Limit party size for manageability
-    # APPROACH: Integer column with reasonable default
-    
-    # TODO: Add avatar_url column
-    # WHY: Visual identity for the party
-    # APPROACH: String column, nullable=True
-    
-    # TODO: Add total_points column
-    # WHY: Aggregate score for party leaderboards
-    # APPROACH: Integer with default=0
-    
-    # TODO: Add created_at and updated_at columns
-    
-    # TODO: Add is_active column
-    # WHY: Allow archiving parties without deletion
-    # APPROACH: Boolean with default=True
-    
-    # ==================== RELATIONSHIPS ====================
-    
-    # TODO: Add relationship to creator (User)
-    # creator = relationship("User", foreign_keys=[creator_id])
-    
-    # TODO: Add relationship to members (through PartyMember)
-    # members = relationship("PartyMember", back_populates="party")
-    
-    # TODO: Add relationship to party goals
-    # goals = relationship("PartyGoal", back_populates="party")
-    
-    # TODO: Add relationship to party habits
-    # habits = relationship("Habit", back_populates="party")
-    
-    pass
-
+    # Relationships
+    creator = relationship("User", foreign_keys=[creator_id])
+    members = relationship("PartyMember", back_populates="party", cascade="all, delete-orphan")
+    goals = relationship("PartyGoal", back_populates="party", cascade="all, delete-orphan")
+    habits = relationship("Habit", back_populates="party")
