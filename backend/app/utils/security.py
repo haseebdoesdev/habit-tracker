@@ -9,115 +9,131 @@ This is critical for application security.
 
 from datetime import datetime, timedelta
 from typing import Optional
+import secrets
 
-# TODO: Import passlib's CryptContext for password hashing
-# WHY: Secure password hashing with bcrypt
-# APPROACH: from passlib.context import CryptContext
+from passlib.context import CryptContext
+from jose import JWTError, jwt
 
-# TODO: Import python-jose for JWT handling
-# WHY: Create and verify JWT tokens
-# APPROACH: from jose import JWTError, jwt
-
-# TODO: Import settings for JWT configuration
-# WHY: Get secret key, algorithm, expiry time
+from app.config import settings
 
 
-# TODO: Create password context for bcrypt hashing
-# WHY: Configure password hashing algorithm
-# APPROACH: pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-# SECURITY: bcrypt is the recommended algorithm for password hashing
+# Password hashing context using bcrypt
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# JWT configuration from settings
+SECRET_KEY = settings.JWT_SECRET_KEY
+ALGORITHM = settings.JWT_ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES
+REFRESH_TOKEN_EXPIRE_DAYS = 7
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify a plain password against a hashed password.
-    
-    TODO: Use pwd_context to verify the password
-    WHY: Check if provided password matches stored hash
-    APPROACH: Return pwd_context.verify(plain_password, hashed_password)
-    SECURITY: Uses constant-time comparison to prevent timing attacks
+    Uses constant-time comparison to prevent timing attacks.
     """
-    return False  # TODO: Implement
+    return pwd_context.verify(plain_password, hashed_password)
 
 
 def hash_password(password: str) -> str:
     """
     Hash a password using bcrypt.
-    
-    TODO: Use pwd_context to hash the password
-    WHY: Convert plain password to secure hash for storage
-    APPROACH: Return pwd_context.hash(password)
-    SECURITY: Never store plain text passwords
     """
-    return ""  # TODO: Implement
+    return pwd_context.hash(password)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """
     Create a JWT access token.
-    
-    TODO: Copy the data to avoid modifying original
-    WHY: Don't mutate input data
-    APPROACH: to_encode = data.copy()
-    
-    TODO: Set expiration time
-    WHY: Tokens should expire for security
-    APPROACH: Use expires_delta or default from settings
-    
-    TODO: Add expiration to token payload
-    WHY: JWT needs 'exp' claim for expiration
-    APPROACH: to_encode.update({"exp": expire_time})
-    
-    TODO: Encode the JWT
-    WHY: Create the actual token string
-    APPROACH: jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    SECURITY: Keep secret key secure, use strong algorithm
-    
-    TODO: Return the token
-    WHY: Used for authentication
     """
-    return ""  # TODO: Implement
+    to_encode = data.copy()
+    
+    if expires_delta:
+        expire = datetime.utcnow() + expires_delta
+    else:
+        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    
+    to_encode.update({"exp": expire, "type": "access"})
+    
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
 
 
 def decode_access_token(token: str) -> dict:
     """
     Decode and validate a JWT access token.
-    
-    TODO: Try to decode the token
-    WHY: Verify token is valid and extract payload
-    APPROACH: jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    
-    TODO: Handle invalid tokens
-    WHY: Expired or tampered tokens should be rejected
-    APPROACH: Catch JWTError exceptions
-    SECURITY: Don't reveal why token is invalid in error messages
-    
-    TODO: Return decoded payload
-    WHY: Contains user information
+    Returns empty dict if token is invalid or expired.
     """
-    return {}  # TODO: Implement
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        return payload
+    except JWTError:
+        return {}
 
 
 def create_refresh_token(data: dict) -> str:
     """
     Create a refresh token with longer expiration.
-    
-    TODO: Similar to access token but with longer expiry
-    WHY: Refresh tokens last longer than access tokens
-    APPROACH: Same as create_access_token with different expiry
-    SECURITY: Consider storing refresh tokens in database for revocation
     """
-    return ""  # TODO: Implement
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    to_encode.update({"exp": expire, "type": "refresh"})
+    
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
+
+def decode_refresh_token(token: str) -> dict:
+    """
+    Decode and validate a refresh token.
+    Returns empty dict if token is invalid or expired.
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        if payload.get("type") != "refresh":
+            return {}
+        return payload
+    except JWTError:
+        return {}
 
 
 def generate_random_string(length: int = 32) -> str:
     """
-    Generate a random string for tokens, codes, etc.
-    
-    TODO: Use secrets module to generate random string
-    WHY: Cryptographically secure random values
-    APPROACH: secrets.token_urlsafe(length)
-    SECURITY: Use secrets module, not random module
+    Generate a cryptographically secure random string.
     """
-    return ""  # TODO: Implement
+    return secrets.token_urlsafe(length)
 
+
+def generate_verification_code(length: int = 6) -> str:
+    """
+    Generate a numeric verification code.
+    """
+    return ''.join(secrets.choice('0123456789') for _ in range(length))
+
+
+def is_token_expired(token: str) -> bool:
+    """
+    Check if a token is expired without raising an exception.
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        exp = payload.get("exp")
+        if exp is None:
+            return True
+        return datetime.utcnow() > datetime.fromtimestamp(exp)
+    except JWTError:
+        return True
+
+
+def get_token_expiry(token: str) -> Optional[datetime]:
+    """
+    Get the expiration datetime of a token.
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_exp": False})
+        exp = payload.get("exp")
+        if exp:
+            return datetime.fromtimestamp(exp)
+        return None
+    except JWTError:
+        return None

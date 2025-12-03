@@ -9,11 +9,14 @@ Defines habit-related API endpoints.
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List
+from datetime import date
 
-# TODO: Import database dependency
-# TODO: Import habit controller
-# TODO: Import habit schemas
-# TODO: Import auth middleware
+from app.database import get_db
+from app.schemas.habit import HabitCreate, HabitUpdate, HabitResponse, HabitStats
+from app.middleware.auth import get_current_active_user
+from app.models.user import User
+from app.models.habit import Habit
+from app.models.log import Log
 
 
 router = APIRouter(
@@ -22,138 +25,284 @@ router = APIRouter(
 )
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_habit():
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=HabitResponse)
+async def create_habit(
+    habit_data: HabitCreate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Create a new habit for the current user.
-    
-    TODO: Add function signature
-    WHY: Accept HabitCreate schema, db session, current user
-    APPROACH: def create_habit(habit_data: HabitCreate, 
-                               db: Session = Depends(get_db),
-                               current_user = Depends(get_current_user))
-    
-    TODO: Call habit controller's create function
-    WHY: Delegate to business logic
-    
-    TODO: Return created habit
-    WHY: Frontend needs habit with generated ID
     """
-    return {"message": "Create habit endpoint - to be implemented"}
+    new_habit = Habit(
+        user_id=current_user.id,
+        party_id=habit_data.party_id,
+        title=habit_data.title,
+        description=habit_data.description,
+        frequency=habit_data.frequency,
+        category=habit_data.category,
+        target_days=habit_data.target_days,
+        reminder_time=habit_data.reminder_time,
+        color=habit_data.color,
+        icon=habit_data.icon,
+        is_active=True,
+        current_streak=0,
+        longest_streak=0
+    )
+    
+    db.add(new_habit)
+    db.commit()
+    db.refresh(new_habit)
+    
+    return new_habit
 
 
-@router.get("/")
-async def get_habits():
+@router.get("/", response_model=List[HabitResponse])
+async def get_habits(
+    category: Optional[str] = Query(None, description="Filter by category"),
+    is_active: Optional[bool] = Query(None, description="Filter by active status"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Get all habits for the current user.
-    
-    TODO: Add function signature with filters
-    WHY: Support filtering and pagination
-    APPROACH: Add Query parameters for category, is_active
-    
-    TODO: Add auth dependency
-    WHY: Only return current user's habits
-    SECURITY: User can only see their own habits
-    
-    TODO: Call habit controller's get_user_habits function
-    WHY: Fetch filtered habit list
-    
-    TODO: Return habit list
-    WHY: Dashboard display
     """
-    return {"message": "Get habits endpoint - to be implemented"}
+    query = db.query(Habit).filter(Habit.user_id == current_user.id)
+    
+    if category:
+        query = query.filter(Habit.category == category)
+    
+    if is_active is not None:
+        query = query.filter(Habit.is_active == is_active)
+    
+    habits = query.all()
+    
+    # Add completed_today field
+    today = date.today()
+    result = []
+    for habit in habits:
+        habit_dict = {
+            "id": habit.id,
+            "user_id": habit.user_id,
+            "party_id": habit.party_id,
+            "title": habit.title,
+            "description": habit.description,
+            "frequency": habit.frequency.value if habit.frequency else None,
+            "category": habit.category.value if habit.category else None,
+            "target_days": habit.target_days,
+            "reminder_time": habit.reminder_time,
+            "color": habit.color,
+            "icon": habit.icon,
+            "current_streak": habit.current_streak,
+            "longest_streak": habit.longest_streak,
+            "is_active": habit.is_active,
+            "created_at": habit.created_at,
+            "updated_at": habit.updated_at,
+            "completed_today": db.query(Log).filter(
+                Log.habit_id == habit.id,
+                Log.log_date == today,
+                Log.completed == True
+            ).first() is not None
+        }
+        result.append(habit_dict)
+    
+    return result
 
 
-@router.get("/{habit_id}")
-async def get_habit(habit_id: int):
+@router.get("/{habit_id}", response_model=HabitResponse)
+async def get_habit(
+    habit_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Get a specific habit by ID.
-    
-    TODO: Add function signature
-    WHY: Accept habit ID and auth
-    
-    TODO: Call habit controller's get_habit_by_id function
-    WHY: Fetch and verify ownership
-    
-    TODO: Handle not found
-    WHY: Return 404 if habit doesn't exist
-    
-    TODO: Return habit
-    WHY: Habit detail view
     """
-    return {"message": "Get habit endpoint - to be implemented"}
+    habit = db.query(Habit).filter(
+        Habit.id == habit_id,
+        Habit.user_id == current_user.id
+    ).first()
+    
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+    
+    # Add completed_today
+    today = date.today()
+    completed_today = db.query(Log).filter(
+        Log.habit_id == habit.id,
+        Log.log_date == today,
+        Log.completed == True
+    ).first() is not None
+    
+    return {
+        **habit.__dict__,
+        "frequency": habit.frequency.value if habit.frequency else None,
+        "category": habit.category.value if habit.category else None,
+        "completed_today": completed_today
+    }
 
 
-@router.put("/{habit_id}")
-async def update_habit(habit_id: int):
+@router.put("/{habit_id}", response_model=HabitResponse)
+async def update_habit(
+    habit_id: int,
+    habit_data: HabitUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Update an existing habit.
-    
-    TODO: Add function signature with HabitUpdate schema
-    WHY: Accept partial updates
-    
-    TODO: Add auth dependency
-    WHY: Verify ownership
-    SECURITY: Only owner can update
-    
-    TODO: Call habit controller's update function
-    WHY: Apply updates
-    
-    TODO: Return updated habit
-    WHY: Confirm changes
     """
-    return {"message": "Update habit endpoint - to be implemented"}
+    habit = db.query(Habit).filter(
+        Habit.id == habit_id,
+        Habit.user_id == current_user.id
+    ).first()
+    
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+    
+    # Update fields
+    update_data = habit_data.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        if value is not None:
+            setattr(habit, field, value)
+    
+    db.commit()
+    db.refresh(habit)
+    
+    return habit
 
 
 @router.delete("/{habit_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_habit(habit_id: int):
+async def delete_habit(
+    habit_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Delete a habit.
-    
-    TODO: Add function signature
-    WHY: Accept habit ID and auth
-    SECURITY: Only owner can delete
-    
-    TODO: Call habit controller's delete function
-    WHY: Remove or archive habit
-    
-    TODO: Return no content
-    WHY: Standard delete response
     """
+    habit = db.query(Habit).filter(
+        Habit.id == habit_id,
+        Habit.user_id == current_user.id
+    ).first()
+    
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+    
+    # Soft delete - mark as inactive
+    habit.is_active = False
+    db.commit()
+    
     return None
 
 
-@router.get("/{habit_id}/stats")
-async def get_habit_stats(habit_id: int):
+@router.get("/{habit_id}/stats", response_model=HabitStats)
+async def get_habit_stats(
+    habit_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Get statistics for a specific habit.
-    
-    TODO: Add function signature
-    WHY: Accept habit ID and auth
-    
-    TODO: Call habit controller's get_habit_stats function
-    WHY: Calculate habit statistics
-    
-    TODO: Return stats object
-    WHY: Analytics display
     """
-    return {"message": "Get stats endpoint - to be implemented"}
+    habit = db.query(Habit).filter(
+        Habit.id == habit_id,
+        Habit.user_id == current_user.id
+    ).first()
+    
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+    
+    # Calculate stats
+    total_completions = db.query(Log).filter(
+        Log.habit_id == habit_id,
+        Log.completed == True
+    ).count()
+    
+    total_logs = db.query(Log).filter(Log.habit_id == habit_id).count()
+    completion_rate = (total_completions / total_logs * 100) if total_logs > 0 else 0.0
+    
+    last_completed_log = db.query(Log).filter(
+        Log.habit_id == habit_id,
+        Log.completed == True
+    ).order_by(Log.log_date.desc()).first()
+    
+    return HabitStats(
+        habit_id=habit_id,
+        total_completions=total_completions,
+        completion_rate=completion_rate,
+        current_streak=habit.current_streak,
+        longest_streak=habit.longest_streak,
+        last_completed=last_completed_log.log_date if last_completed_log else None,
+        total_days_tracked=total_logs
+    )
 
 
 @router.post("/{habit_id}/complete")
-async def complete_habit(habit_id: int):
+async def complete_habit(
+    habit_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Quick endpoint to mark habit as completed for today.
-    
-    TODO: Add function signature
-    WHY: Simple completion action
-    
-    TODO: Create log entry for today
-    WHY: Record completion
-    APPROACH: Call log controller or create log directly
-    
-    TODO: Return updated habit with today's status
-    WHY: Confirm completion
     """
-    return {"message": "Complete habit endpoint - to be implemented"}
-
+    habit = db.query(Habit).filter(
+        Habit.id == habit_id,
+        Habit.user_id == current_user.id
+    ).first()
+    
+    if not habit:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Habit not found"
+        )
+    
+    today = date.today()
+    
+    # Check if already logged today
+    existing_log = db.query(Log).filter(
+        Log.habit_id == habit_id,
+        Log.log_date == today
+    ).first()
+    
+    if existing_log:
+        existing_log.completed = True
+        from datetime import datetime
+        existing_log.completion_time = datetime.utcnow()
+    else:
+        from datetime import datetime
+        new_log = Log(
+            habit_id=habit_id,
+            user_id=current_user.id,
+            log_date=today,
+            completed=True,
+            completion_time=datetime.utcnow()
+        )
+        db.add(new_log)
+    
+    # Update streak
+    habit.current_streak += 1
+    if habit.current_streak > habit.longest_streak:
+        habit.longest_streak = habit.current_streak
+    
+    db.commit()
+    
+    return {
+        "message": "Habit marked as completed",
+        "habit_id": habit_id,
+        "date": today,
+        "current_streak": habit.current_streak
+    }

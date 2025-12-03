@@ -12,66 +12,82 @@ from typing import Optional
 from datetime import date, datetime, timedelta
 
 # TODO: Import models (User, Habit, Log)
+from app.models.achievement import Achievement
 # WHY: Need to query habit and log data
-
+from app.models.user import User
+from app.models.habit import Habit
+from app.models.log import Log
 # TODO: Import schemas for analytics responses
 
 
 async def get_overview_stats(current_user, db: Session):
     """
     Get overview statistics for dashboard.
-    
-    TODO: Count total habits
-    WHY: Show how many habits user is tracking
-    APPROACH: Count habits where user_id = current_user.id
-    
-    TODO: Count active habits
-    WHY: Exclude paused/archived habits
-    APPROACH: Filter by is_active = True
-    
-    TODO: Calculate today's completion rate
-    WHY: Show progress for today
-    APPROACH: Completed today / Total active habits
-    
-    TODO: Calculate this week's completion rate
-    WHY: Weekly performance overview
-    
-    TODO: Get total completions all time
-    WHY: Lifetime progress stat
-    
-    TODO: Get current active streaks count
-    WHY: How many habits have active streaks
-    
-    TODO: Return overview stats object
-    WHY: Dashboard display
     """
-    return {"message": "Get overview - to be implemented"}
+    curr_user_habits = db.query(Habit).filter(Habit.user_id == current_user.id).all()
+    total_habits = len(curr_user_habits)
+    curr_user_active_habits = db.query(Habit).filter(Habit.user_id == current_user.id, Habit.is_active == True).all()
+    total_active_habits = len(curr_user_active_habits)
+    
+    # Guard against division by zero
+    if total_active_habits == 0:
+        today_completion_rate = 0.0
+        this_week_completion_rate = 0.0
+    else:
+        today_logs = db.query(Log).filter(
+            Log.user_id == current_user.id,
+            Log.log_date == date.today(),
+            Log.completed == True
+        ).count()
+        today_completion_rate = today_logs / total_active_habits
+        
+        week_logs = db.query(Log).filter(
+            Log.user_id == current_user.id,
+            Log.log_date >= date.today() - timedelta(days=7),
+            Log.completed == True
+        ).count()
+        this_week_completion_rate = week_logs / (total_active_habits * 7)
+    
+    total_completions = db.query(Log).filter(Log.user_id == current_user.id, Log.completed == True).count()
+    current_active_streaks = db.query(Habit).filter(Habit.user_id == current_user.id, Habit.current_streak > 0).count()
+    longest_active_streaks = db.query(Habit).filter(Habit.user_id == current_user.id, Habit.longest_streak > 0).count()
+    return {
+        "total_habits": total_habits,
+        "total_active_habits": total_active_habits,
+        "today_completion_rate": today_completion_rate,
+        "this_week_completion_rate": this_week_completion_rate,
+        "total_completions": total_completions,
+        "current_active_streaks": current_active_streaks,
+        "longest_active_streaks": longest_active_streaks
+    }
 
 
 async def get_streak_data(current_user, db: Session):
     """
     Get streak information for all habits.
-    
-    TODO: Get all user's habits with streak data
-    WHY: Compile streak information
-    APPROACH: Select habits with current_streak, longest_streak
-    
-    TODO: Calculate overall streak stats
-    WHY: Summary information
-    APPROACH: Sum, average of streaks
-    
-    TODO: Identify habits at risk (about to break streak)
-    WHY: Motivate user to maintain streaks
-    APPROACH: Check if habit not completed today
-    
-    TODO: Get personal best streak
-    WHY: Achievement highlight
-    APPROACH: Max of all longest_streak values
-    
-    TODO: Return streak data
-    WHY: UI display
     """
-    return {"message": "Get streaks - to be implemented"}
+    habits_with_streaks = db.query(Habit).filter(
+        Habit.user_id == current_user.id,
+        Habit.current_streak > 0
+    ).all()
+    
+    # Handle empty list to avoid division by zero and empty sequence errors
+    if not habits_with_streaks:
+        overall_streak_stats = {
+            "total_streaks": 0,
+            "average_streak": 0.0,
+            "longest_streak": 0
+        }
+    else:
+        overall_streak_stats = {
+            "total_streaks": len(habits_with_streaks),
+            "average_streak": sum(habit.current_streak for habit in habits_with_streaks) / len(habits_with_streaks),
+            "longest_streak": max(habit.longest_streak for habit in habits_with_streaks)
+        }
+    return {
+        "habits_with_streaks": habits_with_streaks,
+        "overall_streak_stats": overall_streak_stats
+    }
 
 
 async def get_completion_heatmap(current_user, db: Session,
@@ -79,119 +95,131 @@ async def get_completion_heatmap(current_user, db: Session,
                                   end_date: date):
     """
     Get completion data for heatmap calendar.
-    
-    TODO: Validate date range
-    WHY: Reasonable limits for performance
-    APPROACH: Limit to reasonable range (e.g., 1 year)
-    
-    TODO: Query logs for date range
-    WHY: Get all completions in period
-    APPROACH: Filter logs by date range and user
-    
-    TODO: Group completions by date
-    WHY: Count per day for heatmap
-    APPROACH: Use SQL GROUP BY or Python grouping
-    
-    TODO: Calculate intensity for each day
-    WHY: Heatmap color intensity
-    APPROACH: Completions / Total habits for that day
-    
-    TODO: Return heatmap data
-    WHY: Calendar visualization
-    APPROACH: List of {date, count, intensity}
     """
-    return {"message": "Get heatmap - to be implemented"}
+    logs = db.query(Log).filter(
+        Log.user_id == current_user.id,
+        Log.log_date >= start_date,
+        Log.log_date <= end_date,
+        Log.completed == True
+    ).all()
+    
+    # Aggregate completions count per date
+    heatmap_data = {}
+    for log in logs:
+        if log.log_date in heatmap_data:
+            heatmap_data[log.log_date] += 1
+        else:
+            heatmap_data[log.log_date] = 1
+    return heatmap_data
+
 
 
 async def get_progress_chart_data(current_user, db: Session,
                                    period: str = "week"):
     """
     Get data for progress charts.
-    
-    TODO: Determine date range based on period
-    WHY: Week, month, or year view
-    APPROACH: Calculate start_date from period
-    
-    TODO: Query completions for period
-    WHY: Get chart data points
-    
-    TODO: Group by appropriate interval
-    WHY: Daily for week, weekly for month, monthly for year
-    APPROACH: Use date truncation for grouping
-    
-    TODO: Calculate completion rates per interval
-    WHY: Chart y-axis values
-    
-    TODO: Return chart data
-    WHY: Recharts visualization
-    APPROACH: List of {label, value} objects
     """
-    return {"message": "Get chart data - to be implemented"}
+    if period == "week":
+        start_date = date.today() - timedelta(days=7)
+        end_date = date.today()
+    elif period == "month":
+        start_date = date.today().replace(day=1)
+        end_date = date.today()
+    elif period == "year":
+        start_date = date.today().replace(day=1, month=1)
+        end_date = date.today()
+    else:
+        raise HTTPException(status_code=400, detail="Invalid period")
+    
+    logs = db.query(Log).filter(
+        Log.user_id == current_user.id,
+        Log.log_date >= start_date,
+        Log.log_date <= end_date,
+        Log.completed == True
+    ).all()
+    
+    # Aggregate completions count per date
+    chart_data = {}
+    for log in logs:
+        if log.log_date in chart_data:
+            chart_data[log.log_date] += 1
+        else:
+            chart_data[log.log_date] = 1
+    return chart_data
 
 
 async def get_category_breakdown(current_user, db: Session):
     """
     Get habit statistics by category.
-    
-    TODO: Group habits by category
-    WHY: Category-wise analysis
-    
-    TODO: Calculate stats per category
-    WHY: Completion rates by category
-    APPROACH: Count, completion rate for each
-    
-    TODO: Identify strongest/weakest categories
-    WHY: Helpful insights
-    
-    TODO: Return category breakdown
-    WHY: Analytics display
     """
-    return {"message": "Get category breakdown - to be implemented"}
+    habits = db.query(Habit).filter(Habit.user_id == current_user.id).all()
+    
+    # Group habits by category first
+    from collections import defaultdict
+    categories = defaultdict(list)
+    for habit in habits:
+        categories[habit.category].append(habit)
+    
+    category_stats = {}
+    for category, category_habits in categories.items():
+        total_habits = len(category_habits)
+        total_completions = sum(
+            db.query(Log).filter(
+                Log.habit_id == h.id,
+                Log.completed == True
+            ).count()
+            for h in category_habits
+        )
+        # Avoid division by zero
+        completion_rate = total_completions / total_habits if total_habits > 0 else 0.0
+        
+        category_stats[category] = {
+            "total_habits": total_habits,
+            "total_completions": total_completions,
+            "completion_rate": completion_rate
+        }
+    return category_stats
 
 
 async def get_trends(current_user, db: Session):
     """
     Analyze habit tracking trends.
-    
-    TODO: Compare current week to previous week
-    WHY: Week-over-week change
-    
-    TODO: Compare current month to previous month
-    WHY: Month-over-month change
-    
-    TODO: Identify improving habits
-    WHY: Positive reinforcement
-    APPROACH: Habits with increasing completion rates
-    
-    TODO: Identify declining habits
-    WHY: Areas needing attention
-    APPROACH: Habits with decreasing completion rates
-    
-    TODO: Return trends analysis
-    WHY: Insights for user
     """
-    return {"message": "Get trends - to be implemented"}
-
+    current_week_logs = db.query(Log).filter(Log.user_id == current_user.id, Log.log_date >= date.today() - timedelta(days=7), Log.log_date <= date.today()).all()
+    previous_week_logs = db.query(Log).filter(Log.user_id == current_user.id, Log.log_date >= date.today() - timedelta(days=14), Log.log_date < date.today() - timedelta(days=7)).all()
+    current_month_logs = db.query(Log).filter(Log.user_id == current_user.id, Log.log_date >= date.today().replace(day=1), Log.log_date <= date.today()).all()
+    previous_month_logs = db.query(Log).filter(Log.user_id == current_user.id, Log.log_date >= date.today().replace(day=1) - timedelta(days=30), Log.log_date < date.today().replace(day=1)).all()
+    current_year_logs = db.query(Log).filter(Log.user_id == current_user.id, Log.log_date >= date.today().replace(day=1, month=1), Log.log_date <= date.today()).all()
+    previous_year_logs = db.query(Log).filter(Log.user_id == current_user.id, Log.log_date >= date.today().replace(day=1, month=1) - timedelta(days=365), Log.log_date < date.today().replace(day=1, month=1)).all()
+    return {
+        "current_week_logs": current_week_logs,
+        "previous_week_logs": previous_week_logs,
+        "current_month_logs": current_month_logs,
+        "previous_month_logs": previous_month_logs,
+        "current_year_logs": current_year_logs,
+        "previous_year_logs": previous_year_logs
+    }
 
 async def get_achievements_progress(current_user, db: Session):
     """
-    Get progress towards unearned achievements.
-    
-    TODO: Get list of possible achievements
-    WHY: Check progress against each
-    
-    TODO: Get already earned achievements
-    WHY: Exclude from progress list
-    
-    TODO: Calculate progress for each unearned
-    WHY: Show how close user is
-    APPROACH: Current value / target value
-    
-    TODO: Sort by closest to completion
-    WHY: Motivate with achievable goals
-    
-    TODO: Return achievement progress
-    WHY: Gamification display
+    Get progress towards achievements.
     """
-    return {"message": "Get achievement progress - to be implemented"}
-
+    achievements = db.query(Achievement).filter(Achievement.user_id == current_user.id).all()
+    
+    # Use earned_at to determine if achievement is earned (not None means earned)
+    earned_achievements = [a for a in achievements if a.earned_at is not None]
+    
+    achievement_progress = {}
+    for achievement in achievements:
+        achievement_progress[achievement.title] = {
+            "description": achievement.description,
+            "points": achievement.points,
+            "rarity": achievement.rarity,
+            "is_earned": achievement.earned_at is not None,
+            "earned_at": achievement.earned_at
+        }
+    return {
+        "total_achievements": len(achievements),
+        "earned_count": len(earned_achievements),
+        "achievements": achievement_progress
+    }

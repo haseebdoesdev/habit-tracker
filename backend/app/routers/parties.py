@@ -6,14 +6,16 @@ Parties Router
 Defines party/guild API endpoints.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Body
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
+from pydantic import BaseModel
 
-# TODO: Import dependencies
-# TODO: Import party controller
-# TODO: Import party schemas
-# TODO: Import auth middleware
+from app.database import get_db
+from app.controllers import party_controller
+from app.middleware.auth import get_current_active_user
+from app.models.user import User
+from app.models.party_member import PartyMember, PartyRole
 
 
 router = APIRouter(
@@ -22,196 +24,183 @@ router = APIRouter(
 )
 
 
+class PartyCreateRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    is_public: bool = False
+    max_members: int = 50
+    avatar_url: Optional[str] = None
+
+
+class PartyUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    is_public: Optional[bool] = None
+    max_members: Optional[int] = None
+    avatar_url: Optional[str] = None
+
+
+class JoinPartyRequest(BaseModel):
+    invite_code: str
+
+
+class TransferLeadershipRequest(BaseModel):
+    new_leader_id: int
+
+
 @router.post("/", status_code=status.HTTP_201_CREATED)
-async def create_party():
+async def create_party(
+    party_data: PartyCreateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Create a new party.
-    
-    TODO: Add function signature with PartyCreate schema
-    WHY: Accept party data
-    
-    TODO: Add auth dependency
-    WHY: Creator becomes party leader
-    
-    TODO: Call party controller's create_party function
-    WHY: Create party and add creator as leader
-    
-    TODO: Return created party
-    WHY: Navigate to new party
     """
-    return {"message": "Create party endpoint - to be implemented"}
+    return await party_controller.create_party(party_data, current_user, db)
 
 
 @router.get("/")
-async def get_parties():
+async def get_parties(
+    public_only: bool = Query(False, description="Only show public parties"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Get parties (user's parties and optionally public ones).
-    
-    TODO: Add function signature with filters
-    WHY: Filter public/my parties
-    APPROACH: Add Query param for public_only
-    
-    TODO: Add auth dependency
-    WHY: Get user's parties
-    
-    TODO: Call party controller's get_parties function
-    WHY: Fetch party list
-    
-    TODO: Return party list
-    WHY: Party browser/list
     """
-    return {"message": "Get parties endpoint - to be implemented"}
+    return await party_controller.get_parties(current_user, db, public_only)
 
 
 @router.get("/leaderboard")
-async def get_leaderboard():
+async def get_leaderboard(
+    limit: int = Query(10, ge=1, le=100, description="Number of parties to return"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Get global party leaderboard.
-    
-    TODO: Add function signature with limit param
-    WHY: Control number of results
-    APPROACH: Add Query param for limit (default 10)
-    
-    TODO: Call party controller's get_party_leaderboard function
-    WHY: Get ranked parties
-    
-    TODO: Return leaderboard
-    WHY: Competition display
     """
-    return {"message": "Get leaderboard endpoint - to be implemented"}
+    return await party_controller.get_party_leaderboard(current_user, db, limit)
 
 
 @router.get("/{party_id}")
-async def get_party(party_id: int):
+async def get_party(
+    party_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Get specific party details.
-    
-    TODO: Add function signature
-    WHY: Accept party ID
-    
-    TODO: Add auth dependency
-    WHY: Check member access
-    
-    TODO: Call party controller's get_party_by_id function
-    WHY: Fetch party with access check
-    
-    TODO: Return party details
-    WHY: Party dashboard
     """
-    return {"message": "Get party endpoint - to be implemented"}
+    return await party_controller.get_party_by_id(party_id, current_user, db)
 
 
 @router.put("/{party_id}")
-async def update_party(party_id: int):
+async def update_party(
+    party_id: int,
+    party_data: PartyUpdateRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Update party details.
-    
-    TODO: Add function signature with PartyUpdate schema
-    WHY: Accept update data
-    
-    TODO: Add auth dependency
-    WHY: Verify leader role
-    SECURITY: Only leaders can update
-    
-    TODO: Call party controller's update_party function
-    WHY: Apply updates
-    
-    TODO: Return updated party
-    WHY: Confirm changes
     """
-    return {"message": "Update party endpoint - to be implemented"}
+    return await party_controller.update_party(party_id, party_data, current_user, db)
 
 
 @router.delete("/{party_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_party(party_id: int):
+async def delete_party(
+    party_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Delete or archive a party.
-    
-    TODO: Add function signature with auth
-    WHY: Verify leader role
-    SECURITY: Only leaders can delete
-    
-    TODO: Call party controller's delete_party function
-    WHY: Remove or archive party
-    
-    TODO: Return no content
-    WHY: Standard delete response
     """
+    await party_controller.delete_party(party_id, current_user, db)
     return None
 
 
 @router.post("/join")
-async def join_party():
+async def join_party(
+    join_data: JoinPartyRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Join a party using invite code.
-    
-    TODO: Add function signature with join request schema
-    WHY: Accept invite code
-    APPROACH: Create schema with invite_code field
-    
-    TODO: Add auth dependency
-    WHY: Know who's joining
-    
-    TODO: Call party controller's join_party function
-    WHY: Add user to party
-    
-    TODO: Return party details
-    WHY: Navigate to joined party
     """
-    return {"message": "Join party endpoint - to be implemented"}
+    return await party_controller.join_party(join_data.invite_code, current_user, db)
 
 
 @router.post("/{party_id}/leave")
-async def leave_party(party_id: int):
+async def leave_party(
+    party_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Leave a party.
-    
-    TODO: Add function signature with auth
-    WHY: Know who's leaving
-    
-    TODO: Call party controller's leave_party function
-    WHY: Remove membership
-    
-    TODO: Return success
-    WHY: Confirm left party
     """
-    return {"message": "Leave party endpoint - to be implemented"}
+    return await party_controller.leave_party(party_id, current_user, db)
 
 
 @router.get("/{party_id}/members")
-async def get_party_members(party_id: int):
+async def get_party_members(
+    party_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Get list of party members.
-    
-    TODO: Add function signature with auth
-    WHY: Verify member access
-    
-    TODO: Query party members
-    WHY: Get member list
-    
-    TODO: Return member list
-    WHY: Party members display
     """
-    return {"message": "Get members endpoint - to be implemented"}
+    # Verify user is a member
+    membership = db.query(PartyMember).filter(
+        PartyMember.party_id == party_id,
+        PartyMember.user_id == current_user.id,
+        PartyMember.is_active == True
+    ).first()
+    
+    if not membership:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You are not a member of this party"
+        )
+    
+    # Get all members
+    members = db.query(PartyMember).filter(
+        PartyMember.party_id == party_id,
+        PartyMember.is_active == True
+    ).all()
+    
+    result = []
+    for member in members:
+        user = db.query(User).filter(User.id == member.user_id).first()
+        if user:
+            result.append({
+                "id": member.id,
+                "user_id": member.user_id,
+                "username": user.username,
+                "avatar_url": user.avatar_url,
+                "role": member.role.value if member.role else None,
+                "contribution_points": member.contribution_points,
+                "joined_at": member.joined_at
+            })
+    
+    return result
 
 
 @router.post("/{party_id}/transfer-leadership")
-async def transfer_leadership(party_id: int):
+async def transfer_leadership(
+    party_id: int,
+    transfer_data: TransferLeadershipRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Transfer party leadership to another member.
-    
-    TODO: Add function signature with new leader ID
-    WHY: Identify new leader
-    
-    TODO: Add auth dependency
-    WHY: Verify current leader
-    SECURITY: Only leader can transfer
-    
-    TODO: Call party controller's transfer_leadership function
-    WHY: Update roles
-    
-    TODO: Return success
-    WHY: Confirm transfer
     """
-    return {"message": "Transfer leadership endpoint - to be implemented"}
-
+    return await party_controller.transfer_leadership(
+        party_id, transfer_data.new_leader_id, current_user, db
+    )

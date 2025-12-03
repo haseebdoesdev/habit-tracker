@@ -9,137 +9,119 @@ Defines authentication-related API endpoints.
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-# TODO: Import database dependency (get_db)
-# WHY: Need database session for each request
-
-# TODO: Import auth controller functions
-# WHY: Business logic for auth operations
-
-# TODO: Import schemas (UserCreate, UserLogin, Token, UserResponse)
-# WHY: Request/response validation
-
-# TODO: Import auth middleware for protected routes
-# WHY: Get current user for authenticated endpoints
+from app.database import get_db
+from app.controllers import auth_controller
+from app.schemas.user import UserCreate, UserLogin, Token, UserResponse, UserUpdate
+from app.middleware.auth import get_current_active_user
+from app.models.user import User
 
 
-# TODO: Create the router instance
-# WHY: Group all auth endpoints together
-# APPROACH: APIRouter with prefix and tags
 router = APIRouter(
     prefix="/auth",
     tags=["Authentication"]
 )
 
 
-@router.post("/register")
-async def register():
+class PasswordUpdate:
+    """Schema for password update request."""
+    def __init__(self, current_password: str, new_password: str, new_password_confirm: str):
+        self.current_password = current_password
+        self.new_password = new_password
+        self.new_password_confirm = new_password_confirm
+
+
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+async def register(
+    user_data: UserCreate,
+    db: Session = Depends(get_db)
+):
     """
     Register a new user account.
-    
-    TODO: Add proper function signature with dependencies
-    WHY: Need schema validation and database session
-    APPROACH: def register(user_data: UserCreate, db: Session = Depends(get_db))
-    
-    TODO: Call auth controller's register function
-    WHY: Delegate to business logic
-    APPROACH: await auth_controller.register_user(user_data, db)
-    
-    TODO: Return success response with appropriate status code
-    WHY: 201 Created for successful registration
-    APPROACH: Return created user (without password)
     """
-    return {"message": "Register endpoint - to be implemented"}
+    return await auth_controller.register_user(user_data, db)
 
 
-@router.post("/login")
-async def login():
+@router.post("/login", response_model=Token)
+async def login(
+    login_data: UserLogin,
+    db: Session = Depends(get_db)
+):
     """
     Authenticate user and return JWT token.
-    
-    TODO: Add function signature
-    WHY: Accept login credentials
-    APPROACH: def login(login_data: UserLogin, db: Session = Depends(get_db))
-    
-    TODO: Call auth controller's login function
-    WHY: Validate credentials and generate token
-    
-    TODO: Return token response
-    WHY: Frontend stores token for auth
-    APPROACH: Return Token schema with access_token
     """
-    return {"message": "Login endpoint - to be implemented"}
+    return await auth_controller.login_user(login_data, db)
 
 
-@router.get("/me")
-async def get_current_user_profile():
+@router.get("/me", response_model=UserResponse)
+async def get_current_user_profile(
+    current_user: User = Depends(get_current_active_user)
+):
     """
     Get current authenticated user's profile.
-    
-    TODO: Add function signature with auth dependency
-    WHY: Need authenticated user
-    APPROACH: def get_me(current_user = Depends(get_current_active_user))
-    
-    TODO: Return user data
-    WHY: Frontend displays user profile
-    APPROACH: Return UserResponse schema
     """
-    return {"message": "Get profile endpoint - to be implemented"}
+    return current_user
 
 
-@router.post("/refresh")
-async def refresh_token():
+@router.post("/refresh", response_model=Token)
+async def refresh_token(
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Refresh JWT token for authenticated user.
-    
-    TODO: Add function signature with auth dependency
-    WHY: Need authenticated user to refresh
-    
-    TODO: Call auth controller's refresh function
-    WHY: Generate new token
-    
-    TODO: Return new token
-    WHY: Frontend updates stored token
     """
-    return {"message": "Refresh token endpoint - to be implemented"}
+    return await auth_controller.refresh_token(current_user, db)
 
 
 @router.put("/password")
-async def update_password():
+async def update_password(
+    current_password: str,
+    new_password: str,
+    new_password_confirm: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Update current user's password.
-    
-    TODO: Add function signature with password update schema
-    WHY: Need current and new passwords
-    
-    TODO: Add auth dependency
-    WHY: Must be authenticated
-    SECURITY: Require current password verification
-    
-    TODO: Call auth controller's update_password function
-    WHY: Validate and update password
-    
-    TODO: Return success response
-    WHY: Confirm password changed
     """
-    return {"message": "Update password endpoint - to be implemented"}
+    password_data = PasswordUpdate(current_password, new_password, new_password_confirm)
+    return await auth_controller.update_password(current_user, password_data, db)
 
 
-@router.put("/profile")
-async def update_profile():
+@router.put("/profile", response_model=UserResponse)
+async def update_profile(
+    profile_data: UserUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Update current user's profile information.
-    
-    TODO: Add function signature with UserUpdate schema
-    WHY: Accept profile update data
-    
-    TODO: Add auth dependency
-    WHY: Must be authenticated
-    
-    TODO: Update user profile in database
-    WHY: Persist changes
-    
-    TODO: Return updated user profile
-    WHY: Confirm changes
     """
-    return {"message": "Update profile endpoint - to be implemented"}
-
+    # Update user profile fields
+    if profile_data.username is not None:
+        # Check if username is taken by another user
+        from app.models.user import User as UserModel
+        existing = db.query(UserModel).filter(
+            UserModel.username == profile_data.username,
+            UserModel.id != current_user.id
+        ).first()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already taken"
+            )
+        current_user.username = profile_data.username
+    
+    if profile_data.avatar_url is not None:
+        current_user.avatar_url = profile_data.avatar_url
+    
+    if profile_data.bio is not None:
+        current_user.bio = profile_data.bio
+    
+    if profile_data.timezone is not None:
+        current_user.timezone = profile_data.timezone
+    
+    db.commit()
+    db.refresh(current_user)
+    
+    return current_user
