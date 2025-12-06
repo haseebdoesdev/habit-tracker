@@ -1,137 +1,179 @@
 """
 Streak Calculator Utility
 =========================
-[NOUMAN] This is your utility module to implement.
+[NOUMAN] Implementation.
 
 Calculates habit completion streaks.
 """
 
 from datetime import date, timedelta
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 from sqlalchemy.orm import Session
+from sqlalchemy import desc
 
-# TODO: Import Log model
-# WHY: Need to query log history for streak calculation
-
-# TODO: Import Habit model
-# WHY: Update streak fields on habit
-
+from app.models.log import Log
+from app.models.habit import Habit
 
 def calculate_current_streak(habit_id: int, db: Session) -> int:
     """
     Calculate the current streak for a habit.
-    
-    TODO: Get logs for this habit ordered by date descending
-    WHY: Check consecutive days from today backwards
-    APPROACH: Query logs where completed=True, order by log_date DESC
-    
-    TODO: Start from today (or yesterday if today not logged yet)
-    WHY: Streak continues if completed today or yesterday
-    APPROACH: Check if today's log exists
-    
-    TODO: Count consecutive completed days
-    WHY: Streak breaks on any missed day
-    APPROACH: Loop through logs, checking each day is consecutive
-    
-    TODO: Return streak count
-    WHY: Number of consecutive days
+    Checks consecutive days starting from today or yesterday.
     """
-    return 0  # TODO: Implement
-
+    # 1. Get all completed logs for this habit, sorted by date (newest first)
+    logs = db.query(Log).filter(
+        Log.habit_id == habit_id, 
+        Log.completed == True
+    ).order_by(desc(Log.log_date)).all()
+    
+    if not logs:
+        return 0
+    
+    today = date.today()
+    start_check = logs[0].log_date
+    
+    # 2. Determine if streak is active
+    # Streak is active if last completion was Today OR Yesterday
+    if start_check == today:
+        current_streak = 1
+        last_date = today
+    elif start_check == today - timedelta(days=1):
+        current_streak = 1
+        last_date = start_check
+    else:
+        # Last completion was 2+ days ago, streak is broken
+        return 0
+        
+    # 3. Iterate backwards to count consecutive days
+    # We skip the first log since we already counted it above
+    for i in range(1, len(logs)):
+        expected_date = last_date - timedelta(days=1)
+        if logs[i].log_date == expected_date:
+            current_streak += 1
+            last_date = expected_date
+        elif logs[i].log_date == last_date:
+            # Handle case where multiple logs might exist for same day
+            continue
+        else:
+            break
+            
+    return current_streak
 
 def calculate_longest_streak(habit_id: int, db: Session) -> int:
     """
     Calculate the longest streak ever for a habit.
-    
-    TODO: Get all completed logs ordered by date
-    WHY: Find longest consecutive sequence
-    APPROACH: Query all logs where completed=True
-    
-    TODO: Track current and longest streak while iterating
-    WHY: Find maximum consecutive days
-    APPROACH: Iterate through dates, tracking consecutive runs
-    
-    TODO: Return longest streak
-    WHY: Personal best record
     """
-    return 0  # TODO: Implement
-
+    # 1. Get all completed logs sorted by date (oldest first)
+    logs = db.query(Log).filter(
+        Log.habit_id == habit_id, 
+        Log.completed == True
+    ).order_by(Log.log_date).all()
+    
+    if not logs:
+        return 0
+        
+    max_streak = 0
+    current_run = 0
+    prev_date = None
+    
+    for log in logs:
+        if prev_date is None:
+            current_run = 1
+        elif log.log_date == prev_date + timedelta(days=1):
+            # Consecutive day
+            current_run += 1
+        elif log.log_date == prev_date:
+            # Same day, ignore
+            pass
+        else:
+            # Gap found, reset run
+            current_run = 1
+            
+        max_streak = max(max_streak, current_run)
+        prev_date = log.log_date
+        
+    return max_streak
 
 def update_habit_streaks(habit_id: int, db: Session) -> Tuple[int, int]:
     """
-    Update streak fields on a habit.
-    
-    TODO: Calculate current streak
-    WHY: Get current consecutive days
-    
-    TODO: Calculate longest streak
-    WHY: Might have set new record
-    
-    TODO: Update habit record
-    WHY: Persist streak values
-    APPROACH: Update habit.current_streak and habit.longest_streak
-    
-    TODO: Commit changes
-    WHY: Save to database
-    
-    TODO: Return both streak values
-    WHY: Caller might need them
+    Update streak fields on a habit record.
     """
-    return (0, 0)  # TODO: Implement
+    current = calculate_current_streak(habit_id, db)
+    longest = calculate_longest_streak(habit_id, db)
+    
+    habit = db.query(Habit).filter(Habit.id == habit_id).first()
+    if habit:
+        habit.current_streak = current
+        # Only update longest if current is higher, or if we recalculated and found a historical high
+        habit.longest_streak = max(longest, habit.longest_streak)
+        db.commit()
+        db.refresh(habit)
+        
+    return current, longest
 
-
-def get_streak_at_risk_habits(user_id: int, db: Session) -> List:
+def get_streak_at_risk_habits(user_id: int, db: Session) -> List[Habit]:
     """
-    Get habits that risk breaking their streak.
-    
-    TODO: Get user's habits with current_streak > 0
-    WHY: Only habits with active streaks can be at risk
-    
-    TODO: Check if completed today
-    WHY: Not at risk if already done today
-    
-    TODO: Return habits not completed today
-    WHY: These are at risk of breaking streak
+    Get habits that have an active streak but haven't been completed today.
     """
-    return []  # TODO: Implement
-
+    today = date.today()
+    
+    # Get all active habits with a streak > 0
+    habits = db.query(Habit).filter(
+        Habit.user_id == user_id,
+        Habit.is_active == True,
+        Habit.current_streak > 0
+    ).all()
+    
+    at_risk = []
+    for habit in habits:
+        # Check if completed today
+        completed_today = db.query(Log).filter(
+            Log.habit_id == habit.id,
+            Log.log_date == today,
+            Log.completed == True
+        ).first()
+        
+        if not completed_today:
+            at_risk.append(habit)
+            
+    return at_risk
 
 def calculate_completion_rate(habit_id: int, db: Session, days: int = 30) -> float:
     """
     Calculate completion rate over last N days.
-    
-    TODO: Get logs for the last N days
-    WHY: Calculate percentage over this period
-    APPROACH: Query logs from today - days to today
-    
-    TODO: Count completed days
-    WHY: Numerator for percentage
-    
-    TODO: Calculate percentage
-    WHY: Completed / Total days
-    APPROACH: Handle case where habit is newer than N days
-    
-    TODO: Return rate
-    WHY: Analytics display
     """
-    return 0.0  # TODO: Implement
+    today = date.today()
+    start_date = today - timedelta(days=days - 1) # Inclusive of today
+    
+    logs_count = db.query(Log).filter(
+        Log.habit_id == habit_id,
+        Log.log_date >= start_date,
+        Log.completed == True
+    ).count()
+    
+    # Basic calculation: completions / days * 100
+    # Note: This assumes the habit existed for all those days.
+    return (logs_count / days) * 100
 
-
-def get_weekly_completion_data(habit_id: int, db: Session) -> List[dict]:
+def get_weekly_completion_data(habit_id: int, db: Session) -> List[Dict]:
     """
-    Get completion data for the last 7 days.
-    
-    TODO: Generate list of last 7 days
-    WHY: Need data for each day
-    APPROACH: Loop from today back 6 days
-    
-    TODO: Get log status for each day
-    WHY: Check if completed each day
-    APPROACH: Query or use cached logs
-    
-    TODO: Return list with date and status
-    WHY: Weekly view display
-    APPROACH: [{"date": date, "completed": bool}, ...]
+    Get completion status for the last 7 days.
     """
-    return []  # TODO: Implement
-
+    today = date.today()
+    result = []
+    
+    for i in range(6, -1, -1): # 6 days ago to 0 days ago (today)
+        check_date = today - timedelta(days=i)
+        
+        log = db.query(Log).filter(
+            Log.habit_id == habit_id,
+            Log.log_date == check_date,
+            Log.completed == True
+        ).first()
+        
+        result.append({
+            "date": check_date,
+            "day_name": check_date.strftime("%a"), # Mon, Tue
+            "completed": log is not None
+        })
+        
+    return result
