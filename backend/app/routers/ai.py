@@ -6,14 +6,21 @@ AI Router
 Defines AI/Gemini integration API endpoints.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional, List, Dict
+from pydantic import BaseModel, Field
 
 from app.database import get_db
 from app.controllers import ai_controller
 from app.middleware.auth import get_current_active_user
 from app.models.user import User
+
+
+class ChatRequest(BaseModel):
+    """Schema for AI chat request."""
+    message: str = Field(..., min_length=1, description="Message to send to AI")
+
 
 router = APIRouter(
     prefix="/ai",
@@ -59,12 +66,9 @@ async def get_habit_tips(
 
 @router.post("/chat")
 async def chat_with_ai(
-    message: dict = Body(..., embed=True), 
+    chat_request: ChatRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    user_message = message.get("message", "")
-    if not user_message:
-        raise HTTPException(status_code=400, detail="Message cannot be empty")
-        
-    return await ai_controller.chat_with_ai(user_message, current_user, db)
+    """Chat with AI about habits."""
+    return await ai_controller.chat_with_ai(chat_request.message, current_user, db)

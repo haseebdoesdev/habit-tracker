@@ -115,5 +115,6 @@ class TestChat:
             headers=auth_headers,
             json={"message": ""}
         )
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        # Pydantic validation fails for empty string (min_length=1)
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
