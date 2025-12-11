@@ -57,7 +57,7 @@ class UserUpdate(BaseModel):
     Schema for updating user profile.
     
     """
-    username: Optional[str] = Field(min_length=3, max_length=20)
+    username: Optional[str] = Field(default=None, min_length=3, max_length=20)
     avatar_url: Optional[str] = None
     bio: Optional[str] = None
     timezone: Optional[str] = None

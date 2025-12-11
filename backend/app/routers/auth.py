@@ -8,6 +8,7 @@ Defines authentication-related API endpoints.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from pydantic import BaseModel, Field
 
 from app.database import get_db
 from app.controllers import auth_controller
@@ -22,12 +23,11 @@ router = APIRouter(
 )
 
 
-class PasswordUpdate:
+class PasswordUpdate(BaseModel):
     """Schema for password update request."""
-    def __init__(self, current_password: str, new_password: str, new_password_confirm: str):
-        self.current_password = current_password
-        self.new_password = new_password
-        self.new_password_confirm = new_password_confirm
+    current_password: str = Field(..., min_length=1, description="Current password")
+    new_password: str = Field(..., min_length=8, description="New password (minimum 8 characters)")
+    new_password_confirm: str = Field(..., min_length=8, description="Confirm new password")
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
@@ -75,16 +75,15 @@ async def refresh_token(
 
 @router.put("/password")
 async def update_password(
-    current_password: str,
-    new_password: str,
-    new_password_confirm: str,
+    password_data: PasswordUpdate,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """
     Update current user's password.
+    
+    Requires the current password for verification and the new password twice for confirmation.
     """
-    password_data = PasswordUpdate(current_password, new_password, new_password_confirm)
     return await auth_controller.update_password(current_user, password_data, db)
 
 

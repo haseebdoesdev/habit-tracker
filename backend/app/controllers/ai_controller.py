@@ -125,7 +125,10 @@ async def get_habit_improvement_tips(habit_id: int, current_user, db: Session):
     """
     Get AI tips for improving a specific habit.
     """
-    habit = db.query(Habit).filter(Habit.id == habit_id).first()
+    habit = db.query(Habit).filter(
+        Habit.id == habit_id,
+        Habit.user_id == current_user.id
+    ).first()
     if not habit:
         raise HTTPException(status_code=404, detail="Habit not found")
         

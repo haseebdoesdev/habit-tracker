@@ -1,0 +1,156 @@
+# Environment Variables
+.env
+.env.local
+.env.*.local
+*.env
+
+# Python - Backend
+backend/venv/
+backend/env/
+backend/.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Database
+*.sqlite
+*.sqlite3
+*.db
+db.sqlite3
+
+# Alembic
+backend/alembic/versions/__pycache__/
+
+# IDE and Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+.vscode
+
+# Node.js - Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.next/
+frontend/.nuxt/
+frontend/dist/
+frontend/coverage/
+frontend/.env.local
+frontend/.env.*.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/.pnp
+frontend/.pnp.js
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS
+Thumbs.db
+.DS_Store
+.directory
+ehthumbs.db
+
+# IDE Specific
+*.sublime-text-project
+*.sublime-text-workspace
+.atom/
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+coverage.xml
+test_results.txt
+report.html
+*.pytest_cache/
+
+# Temporary Files
+*.tmp
+*.bak
+*.swp
+*~
+.tmp/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Google OAuth credentials (if stored locally)
+credentials.json
+token.json
+
+# API keys and secrets
+.secrets/
+secrets.json
+
+# OS Specific Files
+.AppleDouble
+.LSOverride
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+
+# Windows
+$RECYCLE.BIN/
+ehthumbs.db
+Thumbs.db
+*.lnk
+
+# Mac
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+

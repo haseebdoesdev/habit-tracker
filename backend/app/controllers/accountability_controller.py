@@ -234,10 +234,29 @@ async def get_partner_habits(partner_id: int, current_user, db: Session):
     # Calculate basic stats for the view
     completion_rate = 0.0 # Placeholder: Implement actual calculation logic if needed
     
+    # Serialize habits to dictionaries for response
+    serialized_habits = [
+        {
+            "id": h.id,
+            "title": h.title,
+            "description": h.description,
+            "frequency": h.frequency.value if hasattr(h.frequency, 'value') else str(h.frequency),
+            "category": h.category.value if hasattr(h.category, 'value') else str(h.category),
+            "target_days": h.target_days,
+            "current_streak": h.current_streak,
+            "longest_streak": h.longest_streak,
+            "color": h.color,
+            "icon": h.icon,
+            "is_active": h.is_active,
+            "created_at": h.created_at.isoformat() if h.created_at else None
+        }
+        for h in habits
+    ]
+    
     return {
         "partner_id": partner_id,
         "partner_username": partner.username,
-        "habits": habits,
+        "habits": serialized_habits,
         "overall_completion_rate": completion_rate,
         "current_streaks": [h.current_streak for h in habits]
     }

@@ -15,9 +15,35 @@ from app.database import get_db
 from app.schemas.habit import HabitCreate, HabitUpdate, HabitResponse, HabitStats
 from app.middleware.auth import get_current_active_user
 from app.models.user import User
-from app.models.habit import Habit
+from app.models.habit import Habit, HabitFrequency, HabitCategory
 from app.models.log import Log
 from app.utils.streak_calculator import update_habit_streaks
+
+
+def parse_frequency(frequency_str: str) -> HabitFrequency:
+    """Convert frequency string to HabitFrequency enum."""
+    try:
+        # Try lowercase first (matches enum values)
+        return HabitFrequency(frequency_str.lower())
+    except ValueError:
+        # Try uppercase match against enum names
+        try:
+            return HabitFrequency[frequency_str.upper()]
+        except KeyError:
+            return HabitFrequency.DAILY  # Default
+
+
+def parse_category(category_str: str) -> HabitCategory:
+    """Convert category string to HabitCategory enum."""
+    try:
+        # Try lowercase first (matches enum values)
+        return HabitCategory(category_str.lower())
+    except ValueError:
+        # Try uppercase match against enum names
+        try:
+            return HabitCategory[category_str.upper()]
+        except KeyError:
+            return HabitCategory.OTHER  # Default
 
 
 router = APIRouter(
@@ -35,13 +61,17 @@ async def create_habit(
     """
     Create a new habit for the current user.
     """
+    # Convert string values to enums
+    frequency_enum = parse_frequency(habit_data.frequency)
+    category_enum = parse_category(habit_data.category) if habit_data.category else HabitCategory.OTHER
+    
     new_habit = Habit(
         user_id=current_user.id,
         party_id=habit_data.party_id,
         title=habit_data.title,
         description=habit_data.description,
-        frequency=habit_data.frequency,
-        category=habit_data.category,
+        frequency=frequency_enum,
+        category=category_enum,
         target_days=habit_data.target_days,
         reminder_time=habit_data.reminder_time,
         color=habit_data.color,
@@ -167,10 +197,14 @@ async def update_habit(
             detail="Habit not found"
         )
     
-    # Update fields
+    # Update fields with enum conversion for frequency and category
     update_data = habit_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         if value is not None:
+            if field == "frequency":
+                value = parse_frequency(value)
+            elif field == "category":
+                value = parse_category(value)
             setattr(habit, field, value)
     
     db.commit()

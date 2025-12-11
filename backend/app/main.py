@@ -119,6 +119,7 @@ async def health_check():
     Verifies API and database connectivity.
     """
     from app.database import SessionLocal
+    from sqlalchemy import text
     
     health_status = {
         "status": "healthy",
@@ -126,17 +127,19 @@ async def health_check():
         "database": "unknown"
     }
     
-    # Check database connectivity
+    # Check database connectivity using context manager for proper session handling
+    db = None
     try:
-        from sqlalchemy import text
         db = SessionLocal()
         db.execute(text("SELECT 1"))
-        db.close()
         health_status["database"] = "ok"
     except Exception as e:
         health_status["database"] = "error"
         health_status["status"] = "degraded"
         logger.error(f"Database health check failed: {e}")
+    finally:
+        if db is not None:
+            db.close()
     
     return health_status
 

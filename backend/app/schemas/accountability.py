@@ -6,11 +6,12 @@ Accountability Schemas
 Pydantic schemas for accountability partnership validation.
 """
 
-from argparse import Action
-from pydantic import BaseModel, Field
-from typing import Optional, List, Literal
+from pydantic import BaseModel, Field, field_validator
+from typing import Optional, List, Literal, TYPE_CHECKING, Any
 from datetime import datetime
-from habit import HabitResponse
+
+if TYPE_CHECKING:
+    from app.schemas.habit import HabitResponse
 
 class PartnershipRequest(BaseModel):
     """
@@ -18,9 +19,8 @@ class PartnershipRequest(BaseModel):
     
     """
     
-    partner_id:int
-    message:Optional[str]
-    pass
+    partner_id: int
+    message: Optional[str] = None
 
 
 class PartnershipResponse(BaseModel):
@@ -28,15 +28,24 @@ class PartnershipResponse(BaseModel):
     Schema for partnership data in responses.
     """
     
-    id:int 
+    id: int 
     requester_id: int 
     partner_id: int
-    status: Literal["PENDING", "ACTIVE", "DECLINED", "ENDED"] 
-    message: str 
+    status: str  # Will be converted from enum
+    message: Optional[str] = None  # Nullable in model
     can_view_all_habits: bool
     can_comment: bool
     created_at: datetime
-    accepted_at: Optional[datetime]
+    accepted_at: Optional[datetime] = None
+    
+    @field_validator("status", mode="before")
+    @classmethod
+    def convert_status_enum(cls, v: Any) -> str:
+        """Convert PartnershipStatus enum to string value."""
+        if hasattr(v, "value"):
+            return v.value
+        return str(v)
+    
     class Config:
         from_attributes = True
 
@@ -48,7 +57,7 @@ class PartnershipWithUser(PartnershipResponse):
     """
     
     partner_username: str
-    partner_avatar_url: str
+    partner_avatar_url: Optional[str] = None  # Nullable in User model
     partner_email: str
 
 
@@ -100,7 +109,7 @@ class PartnerHabitView(BaseModel):
     
     partner_id: int
     partner_username: str
-    habits: List[HabitResponse]
+    habits: List[dict]  # Serialized habit data
     overall_completion_rate: float
     current_streaks: List[int]
 

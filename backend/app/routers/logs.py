@@ -119,6 +119,92 @@ async def get_habit_logs(
     return logs
 
 
+@router.get("/weekly")
+async def get_weekly_summary(
+    week_start: Optional[date] = Query(None, description="Start of week (defaults to current week)"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get summary for current or specified week.
+    """
+    if week_start is None:
+        # Default to start of current week (Monday)
+        today = date.today()
+        week_start = today - timedelta(days=today.weekday())
+    
+    week_end = week_start + timedelta(days=6)
+    
+    # Get user's active habits
+    habits = db.query(Habit).filter(
+        Habit.user_id == current_user.id,
+        Habit.is_active == True
+    ).all()
+    
+    total_habits = len(habits)
+    
+    # Build daily summaries
+    daily_summaries = []
+    total_completions = 0
+    best_day = None
+    best_day_rate = 0.0
+    
+    for i in range(7):
+        day = week_start + timedelta(days=i)
+        
+        logs = db.query(Log).filter(
+            Log.user_id == current_user.id,
+            Log.log_date == day
+        ).all()
+        
+        completed = sum(1 for log in logs if log.completed)
+        total_completions += completed
+        rate = (completed / total_habits * 100) if total_habits > 0 else 0.0
+        
+        if rate > best_day_rate:
+            best_day_rate = rate
+            best_day = day
+        
+        # Serialize logs properly
+        serialized_logs = [
+            {
+                "id": log.id,
+                "habit_id": log.habit_id,
+                "user_id": log.user_id,
+                "log_date": log.log_date,
+                "completed": log.completed,
+                "completion_time": log.completion_time,
+                "notes": log.notes,
+                "mood": log.mood,
+                "duration_minutes": log.duration_minutes,
+                "created_at": log.created_at
+            }
+            for log in logs
+        ]
+        
+        daily_summaries.append({
+            "date": day,
+            "total_habits": total_habits,
+            "completed_habits": completed,
+            "completion_percentage": rate,
+            "logs": serialized_logs
+        })
+    
+    total_possible = total_habits * 7
+    weekly_rate = (total_completions / total_possible * 100) if total_possible > 0 else 0.0
+    
+    return {
+        "week_start": week_start,
+        "week_end": week_end,
+        "daily_summaries": daily_summaries,
+        "weekly_completion_rate": weekly_rate,
+        "total_completions": total_completions,
+        "total_habits_tracked": total_habits,
+        "best_day": best_day,
+        "best_day_completion_rate": best_day_rate
+    }
+
+
 @router.get("/{log_id}", response_model=LogResponse)
 async def get_log(
     log_id: int,
@@ -246,72 +332,3 @@ async def get_daily_summary(
         completion_percentage=completion_percentage,
         logs=logs
     )
-
-
-@router.get("/weekly")
-async def get_weekly_summary(
-    week_start: Optional[date] = Query(None, description="Start of week (defaults to current week)"),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Get summary for current or specified week.
-    """
-    if week_start is None:
-        # Default to start of current week (Monday)
-        today = date.today()
-        week_start = today - timedelta(days=today.weekday())
-    
-    week_end = week_start + timedelta(days=6)
-    
-    # Get user's active habits
-    habits = db.query(Habit).filter(
-        Habit.user_id == current_user.id,
-        Habit.is_active == True
-    ).all()
-    
-    total_habits = len(habits)
-    
-    # Build daily summaries
-    daily_summaries = []
-    total_completions = 0
-    best_day = None
-    best_day_rate = 0.0
-    
-    for i in range(7):
-        day = week_start + timedelta(days=i)
-        
-        logs = db.query(Log).filter(
-            Log.user_id == current_user.id,
-            Log.log_date == day
-        ).all()
-        
-        completed = sum(1 for log in logs if log.completed)
-        total_completions += completed
-        rate = (completed / total_habits * 100) if total_habits > 0 else 0.0
-        
-        if rate > best_day_rate:
-            best_day_rate = rate
-            best_day = day
-        
-        daily_summaries.append({
-            "date": day,
-            "total_habits": total_habits,
-            "completed_habits": completed,
-            "completion_percentage": rate,
-            "logs": logs
-        })
-    
-    total_possible = total_habits * 7
-    weekly_rate = (total_completions / total_possible * 100) if total_possible > 0 else 0.0
-    
-    return {
-        "week_start": week_start,
-        "week_end": week_end,
-        "daily_summaries": daily_summaries,
-        "weekly_completion_rate": weekly_rate,
-        "total_completions": total_completions,
-        "total_habits_tracked": total_habits,
-        "best_day": best_day,
-        "best_day_completion_rate": best_day_rate
-    }
