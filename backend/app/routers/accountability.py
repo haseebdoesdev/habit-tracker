@@ -8,13 +8,24 @@ Defines accountability partnership API endpoints.
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import List, Optional
 
-# TODO: Import dependencies
-# TODO: Import accountability controller
-# TODO: Import accountability schemas
-# TODO: Import auth middleware
+from app.database import get_db
+from app.controllers import accountability_controller
+from app.middleware.auth import get_current_active_user
+from app.models.user import User
 
+# Import schemas
+from app.schemas.accountability import (
+    PartnershipRequest,
+    PartnershipResponse,
+    PartnershipWithUser,
+    PartnershipUpdate,
+    PartnershipAction,
+    PartnerComment,
+    PartnerCommentResponse,
+    PartnerHabitView
+)
 
 router = APIRouter(
     prefix="/accountability",
@@ -22,181 +33,154 @@ router = APIRouter(
 )
 
 
-@router.post("/request", status_code=status.HTTP_201_CREATED)
-async def request_partnership():
+@router.post("/request", status_code=status.HTTP_201_CREATED, response_model=PartnershipResponse)
+async def request_partnership(
+    request_data: PartnershipRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Send an accountability partnership request.
-    
-    TODO: Add function signature with PartnershipRequest schema
-    WHY: Accept partner ID and message
-    
-    TODO: Add auth dependency
-    WHY: Know who's requesting
-    
-    TODO: Call accountability controller's request_partnership function
-    WHY: Create partnership request
-    
-    TODO: Return created request
-    WHY: Confirm request sent
     """
-    return {"message": "Request partnership endpoint - to be implemented"}
+    return await accountability_controller.request_partnership(
+        request_data.partner_id,
+        request_data.message,
+        current_user,
+        db
+    )
 
 
-@router.get("/partners")
-async def get_partnerships():
+@router.get("/partners", response_model=List[PartnershipWithUser])
+async def get_partnerships(
+    status: Optional[str] = Query(None, description="Filter by status (PENDING, ACTIVE, etc.)"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Get user's accountability partnerships.
-    
-    TODO: Add function signature with status filter
-    WHY: Filter by partnership status
-    APPROACH: Add Query param for status
-    
-    TODO: Add auth dependency
-    WHY: Get current user's partnerships
-    
-    TODO: Call accountability controller's get_partnerships function
-    WHY: Fetch partnerships
-    
-    TODO: Return partnership list
-    WHY: Partners display
     """
-    return {"message": "Get partnerships endpoint - to be implemented"}
+    return await accountability_controller.get_partnerships(
+        current_user,
+        db,
+        status
+    )
 
 
-@router.post("/{partnership_id}/respond")
-async def respond_to_request(partnership_id: int):
+@router.post("/{partnership_id}/respond", response_model=PartnershipResponse)
+async def respond_to_request(
+    partnership_id: int,
+    action_data: PartnershipAction,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Accept or decline a partnership request.
-    
-    TODO: Add function signature with action (accept/decline)
-    WHY: User's response
-    APPROACH: Schema with action field
-    
-    TODO: Add auth dependency
-    WHY: Verify user is the recipient
-    SECURITY: Only recipient can respond
-    
-    TODO: Call accountability controller's respond_to_request function
-    WHY: Update partnership status
-    
-    TODO: Return updated partnership
-    WHY: Confirm action
     """
-    return {"message": "Respond to request endpoint - to be implemented"}
+    accept = action_data.action == "accept"
+    return await accountability_controller.respond_to_request(
+        partnership_id,
+        accept,
+        current_user,
+        db
+    )
 
 
-@router.put("/{partnership_id}")
-async def update_partnership(partnership_id: int):
+@router.put("/{partnership_id}", response_model=PartnershipResponse)
+async def update_partnership(
+    partnership_id: int,
+    settings: PartnershipUpdate,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Update partnership settings.
-    
-    TODO: Add function signature with PartnershipUpdate schema
-    WHY: Accept setting changes
-    
-    TODO: Add auth dependency
-    WHY: Verify user is part of partnership
-    
-    TODO: Call accountability controller's update_partnership function
-    WHY: Update permissions
-    
-    TODO: Return updated partnership
-    WHY: Confirm changes
     """
-    return {"message": "Update partnership endpoint - to be implemented"}
+    return await accountability_controller.update_partnership(
+        partnership_id,
+        settings,
+        current_user,
+        db
+    )
 
 
-@router.delete("/{partnership_id}")
-async def end_partnership(partnership_id: int):
+@router.delete("/{partnership_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def end_partnership(
+    partnership_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     End an accountability partnership.
-    
-    TODO: Add function signature with auth
-    WHY: Verify user is part of partnership
-    
-    TODO: Call accountability controller's end_partnership function
-    WHY: End the partnership
-    
-    TODO: Return success
-    WHY: Confirm ended
     """
-    return {"message": "End partnership endpoint - to be implemented"}
+    await accountability_controller.end_partnership(
+        partnership_id,
+        current_user,
+        db
+    )
+    return None
 
 
-@router.get("/partner/{partner_id}/habits")
-async def get_partner_habits(partner_id: int):
+@router.get("/partner/{partner_id}/habits", response_model=PartnerHabitView)
+async def get_partner_habits(
+    partner_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     View partner's habits.
-    
-    TODO: Add function signature with auth
-    WHY: Verify active partnership
-    SECURITY: Only partners can view
-    
-    TODO: Call accountability controller's get_partner_habits function
-    WHY: Fetch visible habits
-    
-    TODO: Return partner's habits
-    WHY: Partner dashboard
     """
-    return {"message": "Get partner habits endpoint - to be implemented"}
+    return await accountability_controller.get_partner_habits(
+        partner_id,
+        current_user,
+        db
+    )
 
 
-@router.post("/comment")
-async def add_comment():
+@router.post("/comment", response_model=PartnerCommentResponse)
+async def add_comment(
+    comment_data: PartnerComment,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Add a comment on partner's habit.
-    
-    TODO: Add function signature with PartnerComment schema
-    WHY: Accept habit/log ID and comment content
-    
-    TODO: Add auth dependency
-    WHY: Track commenter
-    SECURITY: Verify partnership and can_comment permission
-    
-    TODO: Call accountability controller's add_partner_comment function
-    WHY: Create comment
-    
-    TODO: Return created comment
-    WHY: Display new comment
     """
-    return {"message": "Add comment endpoint - to be implemented"}
+    return await accountability_controller.add_partner_comment(
+        comment_data.habit_id,
+        comment_data.log_id,
+        comment_data.content,
+        current_user,
+        db
+    )
 
 
-@router.get("/comments/{habit_id}")
-async def get_comments(habit_id: int):
+@router.get("/comments/{habit_id}", response_model=List[PartnerCommentResponse])
+async def get_comments(
+    habit_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Get comments on a habit.
-    
-    TODO: Add function signature with auth
-    WHY: Verify access
-    SECURITY: Only owner and partners see comments
-    
-    TODO: Call accountability controller's get_habit_comments function
-    WHY: Fetch comments
-    
-    TODO: Return comment list
-    WHY: Display comments
     """
-    return {"message": "Get comments endpoint - to be implemented"}
+    return await accountability_controller.get_habit_comments(
+        habit_id,
+        current_user,
+        db
+    )
 
 
-@router.get("/search")
-async def search_users():
+@router.get("/search", response_model=List[dict])
+async def search_users(
+    query: str = Query(..., min_length=3, description="Search by username or email"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
     """
     Search for users to partner with.
-    
-    TODO: Add function signature with query param
-    WHY: Search by username or email
-    APPROACH: Add Query param for search query
-    
-    TODO: Add auth dependency
-    WHY: Exclude current user and existing partners
-    
-    TODO: Call accountability controller's search_users function
-    WHY: Find potential partners
-    
-    TODO: Return user list
-    WHY: Partner search results
-    SECURITY: Only return public profile info
     """
-    return {"message": "Search users endpoint - to be implemented"}
-
+    return await accountability_controller.search_users(
+        query,
+        current_user,
+        db
+    )
