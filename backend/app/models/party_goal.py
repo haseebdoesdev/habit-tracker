@@ -40,11 +40,11 @@ class PartyGoal(Base):
     target_value = Column(Integer, default=0)
     current_value = Column(Integer, default=0)
     status = Column(Enum(GoalStatus, name="goal_status_type"), default=GoalStatus.ACTIVE)
-    start_date = Column(DateTime, default=datetime.now)
+    start_date = Column(DateTime, default=datetime.utcnow)
     reward_points = Column(Integer, default=0)
     habit_category = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     party = relationship("Party", back_populates="goals")
-    created_by = relationship("User", back_populates="goals")
+    created_by = relationship("User", back_populates="created_party_goals")
     
 

@@ -14,6 +14,7 @@ from datetime import date, datetime, timedelta
 from app.models.log import Log
 from app.models.habit import Habit
 from app.schemas.log import LogCreate, LogUpdate, LogResponse, DailyLogSummary, WeeklyLogSummary
+from app.utils.streak_calculator import update_habit_streaks
 
 
 async def log_habit_completion(log_data: LogCreate, current_user, db: Session):
@@ -71,14 +72,12 @@ async def log_habit_completion(log_data: LogCreate, current_user, db: Session):
         )
         db.add(log_entry)
     
-    # Update habit streaks if completed
-    if log_data.completed:
-        habit.current_streak += 1
-        if habit.current_streak > habit.longest_streak:
-            habit.longest_streak = habit.current_streak
-    
     db.commit()
     db.refresh(log_entry)
+    
+    # Update habit streaks using proper calculation (after commit so log is saved)
+    if log_data.completed:
+        update_habit_streaks(log_data.habit_id, db)
     
     return log_entry
 

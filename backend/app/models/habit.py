@@ -4,7 +4,6 @@ Defines the Habit table for storing user habits.
 Habits can be personal or associated with a party/guild.
 """
 
-from pydoc import text
 from sqlalchemy import (
     Column, Integer, String, Boolean, DateTime,
     ForeignKey, Enum, Text
@@ -33,6 +32,7 @@ class HabitCategory(enum.Enum):
     SOCIAL = "social"
     FINANCIAL = "financial"
     CREATIVE = "creative"
+    OTHER = "other"
 
 
 # == MODEL ==

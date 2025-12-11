@@ -46,9 +46,18 @@ class User(Base):
     achievements = relationship("Achievement", back_populates="user")
     party_memberships = relationship("PartyMember", back_populates="user")
     updated_at = Column(DateTime, default=datetime.utcnow)
-    accountability_partnerships_as_requester = relationship("AccountabilityPartnership",    foreign_keys=[AccountabilityPartnership.requester_id],
- back_populates="requester")
-    accountability_partnerships_as_partner = relationship("AccountabilityPartnership",    foreign_keys=[AccountabilityPartnership.partner_id],
- back_populates="partner")
-    goals = relationship("Goal", back_populates="user")
+    accountability_partnerships_as_requester = relationship(
+        "AccountabilityPartnership",
+        foreign_keys=[AccountabilityPartnership.requester_id],
+        back_populates="requester"
+    )
+    accountability_partnerships_as_partner = relationship(
+        "AccountabilityPartnership",
+        foreign_keys=[AccountabilityPartnership.partner_id],
+        back_populates="partner"
+    )
     logs = relationship("Log", back_populates="user")
+    # Relationship for parties created by this user
+    created_parties = relationship("Party", back_populates="creator", foreign_keys="Party.creator_id")
+    # Relationship for party goals created by this user
+    created_party_goals = relationship("PartyGoal", back_populates="created_by")
