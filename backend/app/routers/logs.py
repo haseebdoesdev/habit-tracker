@@ -17,6 +17,7 @@ from app.middleware.auth import get_current_active_user
 from app.models.user import User
 from app.models.habit import Habit
 from app.models.log import Log
+from app.utils.streak_calculator import update_habit_streaks
 
 
 router = APIRouter(
@@ -73,15 +74,12 @@ async def create_log(
     )
     
     db.add(new_log)
-    
-    # Update streak if completed
-    if log_data.completed:
-        habit.current_streak += 1
-        if habit.current_streak > habit.longest_streak:
-            habit.longest_streak = habit.current_streak
-    
     db.commit()
     db.refresh(new_log)
+    
+    # Update streak using proper calculation (after commit so log is saved)
+    if log_data.completed:
+        update_habit_streaks(log_data.habit_id, db)
     
     return new_log
 

@@ -15,6 +15,7 @@ from app.models.habit import Habit, HabitFrequency, HabitCategory
 from app.models.log import Log
 from app.models.party_member import PartyMember
 from app.schemas.habit import HabitCreate, HabitUpdate, HabitResponse, HabitStats
+from app.utils.streak_calculator import update_habit_streaks
 
 
 async def create_habit(habit_data: HabitCreate, current_user, db: Session):
@@ -288,17 +289,15 @@ async def complete_habit_today(habit_id: int, current_user, db: Session):
         )
         db.add(new_log)
     
-    # Update streak
-    habit.current_streak += 1
-    if habit.current_streak > habit.longest_streak:
-        habit.longest_streak = habit.current_streak
-    
     db.commit()
+    
+    # Update streak using proper calculation (after commit so log is saved)
+    current_streak, longest_streak = update_habit_streaks(habit_id, db)
     
     return {
         "message": "Habit completed for today",
         "habit_id": habit_id,
         "date": today,
-        "current_streak": habit.current_streak,
-        "longest_streak": habit.longest_streak
+        "current_streak": current_streak,
+        "longest_streak": longest_streak
     }
