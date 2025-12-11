@@ -18,7 +18,7 @@ class UserBase(BaseModel):
     
     """
     email: EmailStr
-    username: str = Field(min_lenght=3, max_length=20)
+    username: str = Field(min_length=3, max_length=20)
 
 
 class UserCreate(UserBase):
