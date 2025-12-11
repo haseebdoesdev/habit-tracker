@@ -6,11 +6,12 @@ Accountability Schemas
 Pydantic schemas for accountability partnership validation.
 """
 
-from argparse import Action
 from pydantic import BaseModel, Field
-from typing import Optional, List, Literal
+from typing import Optional, List, Literal, TYPE_CHECKING
 from datetime import datetime
-from habit import HabitResponse
+
+if TYPE_CHECKING:
+    from app.schemas.habit import HabitResponse
 
 class PartnershipRequest(BaseModel):
     """
@@ -100,7 +101,7 @@ class PartnerHabitView(BaseModel):
     
     partner_id: int
     partner_username: str
-    habits: List[HabitResponse]
+    habits: List[dict]  # Serialized habit data
     overall_completion_rate: float
     current_streaks: List[int]
 

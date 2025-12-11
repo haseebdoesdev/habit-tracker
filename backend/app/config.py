@@ -27,6 +27,25 @@ class Settings(BaseSettings):
     DEBUG: bool = False
     CORS_ORIGINS: List[str] = []
 
+    # Google Calendar OAuth scopes
+    GOOGLE_SCOPES: List[str] = [
+        "https://www.googleapis.com/auth/calendar",
+        "https://www.googleapis.com/auth/calendar.events"
+    ]
+
+    @property
+    def GOOGLE_CLIENT_CONFIG(self) -> dict:
+        """Generate Google OAuth client config from environment variables."""
+        return {
+            "web": {
+                "client_id": self.GOOGLE_CLIENT_ID,
+                "client_secret": self.GOOGLE_CLIENT_SECRET,
+                "redirect_uris": [self.GOOGLE_REDIRECT_URI],
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token"
+            }
+        }
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

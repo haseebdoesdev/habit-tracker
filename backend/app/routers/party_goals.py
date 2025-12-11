@@ -75,6 +75,7 @@ async def create_goal(
         current_value=0,
         status=GoalStatus.ACTIVE,
         start_date=goal_data.start_date or datetime.utcnow(),
+        end_date=goal_data.end_date,
         reward_points=goal_data.reward_points,
         habit_category=goal_data.habit_category
     )
@@ -140,6 +141,7 @@ async def get_party_goals(
             "current_value": goal.current_value,
             "status": goal.status.value,
             "start_date": goal.start_date,
+            "end_date": goal.end_date,
             "reward_points": goal.reward_points,
             "habit_category": goal.habit_category,
             "progress_percentage": progress_percentage,
@@ -185,6 +187,7 @@ async def get_goal(
         "current_value": goal.current_value,
         "status": goal.status.value,
         "start_date": goal.start_date,
+        "end_date": goal.end_date,
         "reward_points": goal.reward_points,
         "habit_category": goal.habit_category,
         "progress_percentage": progress_percentage,

@@ -41,6 +41,7 @@ class PartyGoal(Base):
     current_value = Column(Integer, default=0)
     status = Column(Enum(GoalStatus, name="goal_status_type"), default=GoalStatus.ACTIVE)
     start_date = Column(DateTime, default=datetime.utcnow)
+    end_date = Column(DateTime, nullable=True)  # Deadline for the goal
     reward_points = Column(Integer, default=0)
     habit_category = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
