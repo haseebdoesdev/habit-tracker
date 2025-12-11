@@ -36,7 +36,7 @@ class GeminiHelper:
             # Create the generative model instance
             # using 'gemini-pro' for text-only tasks
             # WHY: Need model to make API calls
-            self.model = genai.GenerativeModel('gemini-pro')
+            self.model = genai.GenerativeModel('gemini-2.5-flash')
         except Exception as e:
             logger.error(f"Failed to initialize Gemini model: {e}")
     
