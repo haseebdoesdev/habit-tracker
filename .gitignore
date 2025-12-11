@@ -48,6 +48,9 @@ dmypy.json
 *.db
 db.sqlite3
 
+# Alembic
+backend/alembic/versions/__pycache__/
+
 # IDE and Editor
 .vscode/
 .idea/
@@ -105,6 +108,9 @@ ehthumbs.db
 htmlcov/
 .pytest_cache/
 coverage.xml
+test_results.txt
+report.html
+*.pytest_cache/
 
 # Temporary Files
 *.tmp
