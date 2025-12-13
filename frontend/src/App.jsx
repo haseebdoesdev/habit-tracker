@@ -1,93 +1,97 @@
 /**
  * Main Application Component
- * ==========================
- * [HASEEB] This is your component to implement.
- * 
- * Sets up routing and main layout for the app.
+ * Sets up routing and main layout for the app
  */
 
-// TODO: Import Routes, Route from react-router-dom
-// WHY: Define application routes
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useAuth } from './context/AuthContext'
 
-// TODO: Import all page/component imports
-// WHY: Components to render for each route
+// Layout components
+import Navbar from './components/Layout/Navbar'
+import Sidebar from './components/Layout/Sidebar'
 
-// TODO: Import layout components (Navbar, Sidebar)
-// WHY: Consistent layout across pages
+// Auth pages
+import Login from './components/Auth/Login'
+import Register from './components/Auth/Register'
 
-// TODO: Import auth context hook
-// WHY: Check if user is authenticated for protected routes
+// Dashboard
+import Dashboard from './components/Dashboard/Dashboard'
+
+// Habits
+import HabitList from './components/Habits/HabitList'
+import CreateHabit from './components/Habits/CreateHabit'
+import EditHabit from './components/Habits/EditHabit'
+
+// Analytics
+import AnalyticsDashboard from './components/Analytics/AnalyticsDashboard'
+
+// AI
+import AISuggestions from './components/AI/AISuggestions'
+
+// Party/Accountability
+import PartyList from './components/Party/PartyList'
+import CreateParty from './components/Party/CreateParty'
+import PartyDashboard from './components/Party/PartyDashboard'
+import PartnerDashboard from './components/Accountability/PartnerDashboard'
 
 function App() {
-  // TODO: Get authentication state from context
-  // WHY: Conditionally render routes based on auth status
-  // APPROACH: const { user, isLoading } = useAuth()
+  const { user, isLoading } = useAuth()
 
-  // TODO: Show loading state while checking auth
-  // WHY: Prevent flash of wrong content
-  // APPROACH: Return loading spinner if isLoading
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* TODO: Add Navbar component */}
-      {/* WHY: Navigation header for the app */}
+      <Navbar />
 
       <div className="flex">
-        {/* TODO: Add Sidebar component (show only when logged in) */}
-        {/* WHY: Side navigation for logged in users */}
+        {user && <Sidebar />}
 
         <main className="flex-1 p-6">
-          {/* TODO: Set up Routes */}
-          {/* WHY: Define which component renders for each URL */}
-          {/* 
-          APPROACH: Define routes like:
-          
           <Routes>
             {/* Public routes */}
-            {/* <Route path="/login" element={<Login />} /> */}
-            {/* <Route path="/register" element={<Register />} /> */}
-            
-            {/* Protected routes - wrap with ProtectedRoute component */}
-            {/* <Route path="/" element={<Dashboard />} /> */}
-            {/* <Route path="/habits" element={<HabitList />} /> */}
-            {/* <Route path="/habits/new" element={<CreateHabit />} /> */}
-            {/* <Route path="/habits/:id/edit" element={<EditHabit />} /> */}
-            {/* <Route path="/analytics" element={<AnalyticsDashboard />} /> */}
-            {/* <Route path="/ai" element={<AISuggestions />} /> */}
-            {/* <Route path="/parties" element={<PartyList />} /> */}
-            {/* <Route path="/parties/new" element={<CreateParty />} /> */}
-            {/* <Route path="/parties/:id" element={<PartyDashboard />} /> */}
-            {/* <Route path="/accountability" element={<PartnerDashboard />} /> */}
-          {/* </Routes> */}
-          
-          <h1 className="text-2xl font-bold text-gray-800">
-            Habit Tracker - Setup Routes Here
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Welcome to your habit tracker! Implement the routes above to get started.
-          </p>
+            <Route path="/login" element={user ? <Navigate to="/" /> : <Login />} />
+            <Route path="/register" element={user ? <Navigate to="/" /> : <Register />} />
+
+            {/* Protected routes */}
+            <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+            <Route path="/habits" element={<ProtectedRoute><HabitList /></ProtectedRoute>} />
+            <Route path="/habits/new" element={<ProtectedRoute><CreateHabit /></ProtectedRoute>} />
+            <Route path="/habits/:id/edit" element={<ProtectedRoute><EditHabit /></ProtectedRoute>} />
+            <Route path="/analytics" element={<ProtectedRoute><AnalyticsDashboard /></ProtectedRoute>} />
+            <Route path="/ai" element={<ProtectedRoute><AISuggestions /></ProtectedRoute>} />
+            <Route path="/parties" element={<ProtectedRoute><PartyList /></ProtectedRoute>} />
+            <Route path="/parties/new" element={<ProtectedRoute><CreateParty /></ProtectedRoute>} />
+            <Route path="/parties/:id" element={<ProtectedRoute><PartyDashboard /></ProtectedRoute>} />
+            <Route path="/accountability" element={<ProtectedRoute><PartnerDashboard /></ProtectedRoute>} />
+
+            {/* Catch all - redirect to dashboard or login */}
+            <Route path="*" element={<Navigate to={user ? "/" : "/login"} />} />
+          </Routes>
         </main>
       </div>
     </div>
   )
 }
 
-// TODO: Create ProtectedRoute component
-// WHY: Redirect unauthenticated users to login
-// APPROACH: Check auth, redirect if not logged in
-/*
+// Protected route wrapper - redirects to login if not authenticated
 function ProtectedRoute({ children }) {
-  // TODO: Get auth state
-  // WHY: Check if user is logged in
-  
-  // TODO: Redirect to login if not authenticated
-  // WHY: Protect private routes
-  // APPROACH: Navigate to /login if no user
-  
-  // TODO: Return children if authenticated
-  // WHY: Render the protected content
+  const { user } = useAuth()
+
+  if (!user) {
+    return <Navigate to="/login" replace />
+  }
+
+  return children
 }
-*/
 
 export default App
-
