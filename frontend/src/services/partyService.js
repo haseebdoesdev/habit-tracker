@@ -12,89 +12,92 @@ const partyService = {
   // TODO: Implement getParties
   // WHY: Fetch parties (user's or public)
   async getParties(options = {}) {
-    // TODO: Call GET /parties with options
-    // WHY: Get party list
-    // APPROACH: api.get('/parties', { params: options })
-    
-    // TODO: Return parties array
+    return api.get('/parties', { params: options })
+      .then(response => response.data)
+      .catch(error => {
+        throw error
+      })
   },
-  
+
   // TODO: Implement getParty
   // WHY: Fetch single party details
   async getParty(partyId) {
-    // TODO: Call GET /parties/:id
-    // WHY: Get party details
-    // APPROACH: api.get(`/parties/${partyId}`)
-    
-    // TODO: Return party object
+    return api.get(`/parties/${partyId}`)
+      .then(response => response.data)
+      .catch(error => {
+        throw error
+      })
   },
-  
+
   // TODO: Implement createParty
   // WHY: Create a new party
   async createParty(partyData) {
-    // TODO: Call POST /parties
-    // WHY: Create party on server
-    // APPROACH: api.post('/parties', partyData)
-    
-    // TODO: Return created party
+    return api.post('/parties', partyData)
+      .then(response => response.data)
+      .catch(error => {
+        throw error
+      })
   },
-  
+
   // TODO: Implement updateParty
   // WHY: Update party details
   async updateParty(partyId, partyData) {
-    // TODO: Call PUT /parties/:id
-    // WHY: Update party on server
-    // APPROACH: api.put(`/parties/${partyId}`, partyData)
-    
-    // TODO: Return updated party
+    return api.put(`/parties/${partyId}`, partyData)
+      .then(response => response.data)
+      .catch(error => {
+        throw error
+      })
   },
-  
+
   // TODO: Implement deleteParty
   // WHY: Delete/archive a party
   async deleteParty(partyId) {
-    // TODO: Call DELETE /parties/:id
-    // WHY: Remove party
-    // APPROACH: api.delete(`/parties/${partyId}`)
+    return api.delete(`/parties/${partyId}`)
+      .then(response => response.data)
+      .catch(error => {
+        throw error
+      })
   },
-  
+
   // TODO: Implement joinParty
   // WHY: Join a party with invite code
   async joinParty(inviteCode) {
-    // TODO: Call POST /parties/join
-    // WHY: Add user to party
-    // APPROACH: api.post('/parties/join', { inviteCode })
-    
-    // TODO: Return joined party
+    return api.post('/parties/join', { invite_code: inviteCode })
+      .then(response => response.data)
+      .catch(error => {
+        throw error
+      })
   },
-  
+
   // TODO: Implement leaveParty
   // WHY: Leave a party
   async leaveParty(partyId) {
-    // TODO: Call POST /parties/:id/leave
-    // WHY: Remove user from party
-    // APPROACH: api.post(`/parties/${partyId}/leave`)
+    return api.post(`/parties/${partyId}/leave`)
+      .then(response => response.data)
+      .catch(error => {
+        throw error
+      })
   },
-  
+
   // TODO: Implement getPartyMembers
   // WHY: Get list of party members
   async getPartyMembers(partyId) {
-    // TODO: Call GET /parties/:id/members
-    // WHY: Get member list
-    // APPROACH: api.get(`/parties/${partyId}/members`)
-    
-    // TODO: Return members array
+    return api.get(`/parties/${partyId}/members`)
+      .then(response => response.data)
+      .catch(error => {
+        throw error
+      })
   },
-  
+
   // TODO: Implement getPartyLeaderboard
   // WHY: Get global party rankings
   async getPartyLeaderboard(limit = 10) {
-    // TODO: Call GET /parties/leaderboard
-    // WHY: Get ranked parties
-    // APPROACH: api.get('/parties/leaderboard', { params: { limit } })
-    
-    // TODO: Return leaderboard
+    return api.get('/parties/leaderboard', { params: { limit } })
+      .then(response => response.data)
+      .catch(error => {
+        throw error
+      })
   }
 }
 
 export default partyService
-
