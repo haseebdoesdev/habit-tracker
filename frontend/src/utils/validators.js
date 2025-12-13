@@ -13,14 +13,18 @@
  * WHY: Ensure valid email before submission
  */
 export function validateEmail(email) {
-  // TODO: Check email format with regex
-  // WHY: Basic email validation
-  // APPROACH: Use standard email regex pattern
+  if (!email || typeof email !== 'string') {
+    return { valid: false, message: 'Email is required' }
+  }
   
-  // TODO: Return validation result
-  // WHY: { valid: boolean, message: string }
+  // Standard email regex pattern
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   
-  return { valid: true, message: '' } // TODO: Implement
+  if (!emailRegex.test(email)) {
+    return { valid: false, message: 'Please enter a valid email address' }
+  }
+  
+  return { valid: true, message: '' }
 }
 
 /**
@@ -31,16 +35,31 @@ export function validateEmail(email) {
  * SECURITY: Enforce minimum requirements
  */
 export function validatePassword(password) {
-  // TODO: Check minimum length (8 characters)
-  // WHY: Security requirement
+  if (!password || typeof password !== 'string') {
+    return { valid: false, message: 'Password is required' }
+  }
   
-  // TODO: Optionally check for complexity
-  // WHY: Stronger passwords (uppercase, lowercase, number, symbol)
+  // Minimum length check (8 characters as per backend)
+  if (password.length < 8) {
+    return { valid: false, message: 'Password must be at least 8 characters long' }
+  }
   
-  // TODO: Return validation result with message
-  // WHY: Tell user what's wrong
+  // Optional complexity check (can be enhanced)
+  const hasUpperCase = /[A-Z]/.test(password)
+  const hasLowerCase = /[a-z]/.test(password)
+  const hasNumber = /[0-9]/.test(password)
+  const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(password)
   
-  return { valid: true, message: '' } // TODO: Implement
+  const complexityCount = [hasUpperCase, hasLowerCase, hasNumber, hasSpecialChar].filter(Boolean).length
+  
+  if (complexityCount < 2) {
+    return { 
+      valid: false, 
+      message: 'Password should contain at least 2 of: uppercase, lowercase, number, or special character' 
+    }
+  }
+  
+  return { valid: true, message: '' }
 }
 
 /**
@@ -50,10 +69,15 @@ export function validatePassword(password) {
  * WHY: Prevent typos in password
  */
 export function validatePasswordMatch(password, confirmPassword) {
-  // TODO: Check if passwords match
-  // WHY: Confirm user typed correctly
+  if (!password || !confirmPassword) {
+    return { valid: false, message: 'Both password fields are required' }
+  }
   
-  return { valid: true, message: '' } // TODO: Implement
+  if (password !== confirmPassword) {
+    return { valid: false, message: 'Passwords do not match' }
+  }
+  
+  return { valid: true, message: '' }
 }
 
 /**
@@ -63,16 +87,27 @@ export function validatePasswordMatch(password, confirmPassword) {
  * WHY: Ensure valid username format
  */
 export function validateUsername(username) {
-  // TODO: Check minimum length (3 characters)
-  // WHY: Readable usernames
+  if (!username || typeof username !== 'string') {
+    return { valid: false, message: 'Username is required' }
+  }
   
-  // TODO: Check maximum length
-  // WHY: Reasonable limit
+  // Check minimum length (3 characters as per backend)
+  if (username.length < 3) {
+    return { valid: false, message: 'Username must be at least 3 characters long' }
+  }
   
-  // TODO: Check for allowed characters
-  // WHY: Alphanumeric and underscores typically
+  // Check maximum length (20 characters as per backend)
+  if (username.length > 20) {
+    return { valid: false, message: 'Username must be no more than 20 characters long' }
+  }
   
-  return { valid: true, message: '' } // TODO: Implement
+  // Check for allowed characters (alphanumeric and underscores)
+  const usernameRegex = /^[a-zA-Z0-9_]+$/
+  if (!usernameRegex.test(username)) {
+    return { valid: false, message: 'Username can only contain letters, numbers, and underscores' }
+  }
+  
+  return { valid: true, message: '' }
 }
 
 /**
@@ -82,11 +117,19 @@ export function validateUsername(username) {
  * WHY: Common validation for required inputs
  */
 export function validateRequired(value, fieldName = 'This field') {
-  // TODO: Check if value is empty
-  // WHY: Required fields can't be empty
-  // Handle: null, undefined, empty string, whitespace only
+  if (value === null || value === undefined) {
+    return { valid: false, message: `${fieldName} is required` }
+  }
   
-  return { valid: true, message: '' } // TODO: Implement
+  if (typeof value === 'string' && value.trim() === '') {
+    return { valid: false, message: `${fieldName} is required` }
+  }
+  
+  if (Array.isArray(value) && value.length === 0) {
+    return { valid: false, message: `${fieldName} is required` }
+  }
+  
+  return { valid: true, message: '' }
 }
 
 /**
@@ -96,10 +139,17 @@ export function validateRequired(value, fieldName = 'This field') {
  * WHY: String length requirements
  */
 export function validateMinLength(value, minLength, fieldName = 'This field') {
-  // TODO: Check if value meets minimum length
-  // WHY: Enforce length requirements
+  if (value === null || value === undefined) {
+    return { valid: false, message: `${fieldName} is required` }
+  }
   
-  return { valid: true, message: '' } // TODO: Implement
+  const stringValue = String(value)
+  
+  if (stringValue.length < minLength) {
+    return { valid: false, message: `${fieldName} must be at least ${minLength} characters long` }
+  }
+  
+  return { valid: true, message: '' }
 }
 
 /**
@@ -109,10 +159,17 @@ export function validateMinLength(value, minLength, fieldName = 'This field') {
  * WHY: Prevent overly long input
  */
 export function validateMaxLength(value, maxLength, fieldName = 'This field') {
-  // TODO: Check if value is within max length
-  // WHY: Enforce length limits
+  if (value === null || value === undefined) {
+    return { valid: true, message: '' }
+  }
   
-  return { valid: true, message: '' } // TODO: Implement
+  const stringValue = String(value)
+  
+  if (stringValue.length > maxLength) {
+    return { valid: false, message: `${fieldName} must be no more than ${maxLength} characters long` }
+  }
+  
+  return { valid: true, message: '' }
 }
 
 /**
@@ -122,10 +179,24 @@ export function validateMaxLength(value, maxLength, fieldName = 'This field') {
  * WHY: Goal end dates should be in future
  */
 export function validateFutureDate(date) {
-  // TODO: Check if date is after today
-  // WHY: Past dates invalid for some uses
+  if (!date) {
+    return { valid: false, message: 'Date is required' }
+  }
   
-  return { valid: true, message: '' } // TODO: Implement
+  const dateObj = date instanceof Date ? date : new Date(date)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  dateObj.setHours(0, 0, 0, 0)
+  
+  if (isNaN(dateObj.getTime())) {
+    return { valid: false, message: 'Invalid date format' }
+  }
+  
+  if (dateObj <= today) {
+    return { valid: false, message: 'Date must be in the future' }
+  }
+  
+  return { valid: true, message: '' }
 }
 
 /**
@@ -135,10 +206,25 @@ export function validateFutureDate(date) {
  * WHY: End date must be after start date
  */
 export function validateDateRange(startDate, endDate) {
-  // TODO: Check if end is after start
-  // WHY: Valid date range
+  if (!startDate || !endDate) {
+    return { valid: false, message: 'Both start and end dates are required' }
+  }
   
-  return { valid: true, message: '' } // TODO: Implement
+  const start = startDate instanceof Date ? startDate : new Date(startDate)
+  const end = endDate instanceof Date ? endDate : new Date(endDate)
+  
+  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+    return { valid: false, message: 'Invalid date format' }
+  }
+  
+  start.setHours(0, 0, 0, 0)
+  end.setHours(0, 0, 0, 0)
+  
+  if (end <= start) {
+    return { valid: false, message: 'End date must be after start date' }
+  }
+  
+  return { valid: true, message: '' }
 }
 
 /**
@@ -148,10 +234,21 @@ export function validateDateRange(startDate, endDate) {
  * WHY: Targets, points should be positive
  */
 export function validatePositiveNumber(value, fieldName = 'This field') {
-  // TODO: Check if value is positive number
-  // WHY: No negative values allowed
+  if (value === null || value === undefined || value === '') {
+    return { valid: false, message: `${fieldName} is required` }
+  }
   
-  return { valid: true, message: '' } // TODO: Implement
+  const numValue = Number(value)
+  
+  if (isNaN(numValue)) {
+    return { valid: false, message: `${fieldName} must be a valid number` }
+  }
+  
+  if (numValue <= 0) {
+    return { valid: false, message: `${fieldName} must be a positive number` }
+  }
+  
+  return { valid: true, message: '' }
 }
 
 /**
@@ -161,12 +258,22 @@ export function validatePositiveNumber(value, fieldName = 'This field') {
  * WHY: Apply multiple validations to a field
  */
 export function validateAll(value, validators) {
-  // TODO: Run each validator
-  // WHY: Check all requirements
+  if (!Array.isArray(validators) || validators.length === 0) {
+    return { valid: true, message: '' }
+  }
   
-  // TODO: Return first failure or success
-  // WHY: Show most relevant error
+  for (const validator of validators) {
+    if (typeof validator !== 'function') {
+      continue
+    }
+    
+    const result = validator(value)
+    
+    if (!result.valid) {
+      return result
+    }
+  }
   
-  return { valid: true, message: '' } // TODO: Implement
+  return { valid: true, message: '' }
 }
 
