@@ -1,83 +1,58 @@
 /**
  * Authentication Context
- * ======================
- * [HASEEB] This is your context to implement.
- * 
- * Provides authentication state throughout the app.
+ * Provides authentication state throughout the app
  */
 
 import { createContext, useContext, useState, useEffect } from 'react'
-// TODO: Import authService
-// WHY: Make API calls for auth operations
+import authService from '../services/authService'
 
-// TODO: Create the context
-// WHY: Share auth state across components
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
-  // TODO: Set up auth state
-  // WHY: Track current user and loading state
   const [user, setUser] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
-  
+
   useEffect(() => {
-    // TODO: Check for existing auth on mount
-    // WHY: Restore session if user was logged in
-    // APPROACH: Check localStorage for token, validate it
-    
+    // Check for existing auth session on mount
     const checkAuth = async () => {
-      // TODO: Get token from localStorage
-      // WHY: Check for saved session
-      // SECURITY: Token stored in localStorage (consider httpOnly cookies for more security)
-      
-      // TODO: If token exists, validate it
-      // WHY: Ensure token is still valid
-      // APPROACH: Call authService.getMe()
-      
-      // TODO: Set user if valid, clear if not
-      // WHY: Update state based on validation
-      
-      // TODO: Set loading to false
-      // WHY: Auth check complete
+      const token = localStorage.getItem('token')
+
+      if (token) {
+        try {
+          const user = await authService.getMe()
+          setUser(user)
+        } catch (error) {
+          console.error('Failed to validate token:', error)
+          localStorage.removeItem('token')
+          setUser(null)
+        }
+      }
+      setIsLoading(false)
     }
-    
+
     checkAuth()
   }, [])
-  
+
   const login = async (token) => {
-    // TODO: Store token in localStorage
-    // WHY: Persist session across refreshes
-    // APPROACH: localStorage.setItem('token', token)
-    
-    // TODO: Fetch user data
-    // WHY: Get user profile for the token
-    // APPROACH: await authService.getMe()
-    
-    // TODO: Update user state
-    // WHY: Trigger UI updates
+    try {
+      localStorage.setItem('token', token)
+      const user = await authService.getMe()
+      setUser(user)
+    } catch (error) {
+      localStorage.removeItem('token')
+      throw error
+    }
   }
-  
+
   const logout = () => {
-    // TODO: Remove token from localStorage
-    // WHY: Clear saved session
-    // APPROACH: localStorage.removeItem('token')
-    
-    // TODO: Clear user state
-    // WHY: Update UI to logged out state
-    // APPROACH: setUser(null)
-    
-    // TODO: Optionally call logout API
-    // WHY: Invalidate token on server (if implemented)
+    localStorage.removeItem('token')
+    setUser(null)
   }
-  
+
   const updateUser = (userData) => {
-    // TODO: Update user state with new data
-    // WHY: Reflect profile updates
-    // APPROACH: setUser({ ...user, ...userData })
+    setUser({ ...user, ...userData })
   }
-  
-  // TODO: Create context value object
-  // WHY: Expose auth state and functions to consumers
+
   const value = {
     user,
     isLoading,
@@ -86,7 +61,7 @@ export function AuthProvider({ children }) {
     logout,
     updateUser
   }
-  
+
   return (
     <AuthContext.Provider value={value}>
       {children}
@@ -94,8 +69,7 @@ export function AuthProvider({ children }) {
   )
 }
 
-// TODO: Create custom hook for using auth context
-// WHY: Convenient way to access auth in components
+// Custom hook to access auth context
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) {
@@ -103,4 +77,3 @@ export function useAuth() {
   }
   return context
 }
-
