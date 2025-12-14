@@ -7,17 +7,28 @@
  */
 
 import { useState, useEffect } from 'react'
-// TODO: Import partyService
+import partyService from '../../services/partyService'
 
 export default function PartyMembers({ partyId }) {
-  // TODO: Set up state for members
   const [members, setMembers] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   
   useEffect(() => {
-    // TODO: Fetch party members
-    // WHY: Load member list
-    // APPROACH: await partyService.getPartyMembers(partyId)
+    const fetchMembers = async () => {
+      try {
+        setIsLoading(true)
+        const data = await partyService.getPartyMembers(partyId)
+        setMembers(data)
+      } catch (err) {
+        console.error("Failed to load party members:", err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    if (partyId) {
+      fetchMembers()
+    }
   }, [partyId])
   
   if (isLoading) {
@@ -33,8 +44,6 @@ export default function PartyMembers({ partyId }) {
       
       {/* Member list */}
       <div className="space-y-3">
-        {/* TODO: Map through members */}
-        {/*
         {members.map(member => (
           <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
             <div className="flex items-center space-x-3">
@@ -47,14 +56,15 @@ export default function PartyMembers({ partyId }) {
               </div>
             </div>
             <div className="text-right">
-              <p className="font-bold text-blue-600">{member.contributionPoints}</p>
+              <p className="font-bold text-blue-600">{member.contribution_points}</p>
               <p className="text-xs text-gray-500">points</p>
             </div>
           </div>
         ))}
-        */}
         
-        <p className="text-gray-500">Member list will appear here</p>
+        {members.length === 0 && !isLoading && (
+          <p className="text-gray-500">No members found.</p>
+        )}
       </div>
     </div>
   )
