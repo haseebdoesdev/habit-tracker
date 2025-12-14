@@ -7,10 +7,9 @@
  */
 
 import { useState, useEffect } from 'react'
-// TODO: Import accountabilityService
+import accountabilityService from '../../services/accountabilityService'
 
 export default function PartnerComments({ habitId }) {
-  // TODO: Set up state for comments
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
   
@@ -18,32 +17,42 @@ export default function PartnerComments({ habitId }) {
   const [isSending, setIsSending] = useState(false)
   
   useEffect(() => {
-    // TODO: Fetch comments for this habit
-    // WHY: Load existing comments
-    // APPROACH: await accountabilityService.getHabitComments(habitId)
+    const fetchComments = async () => {
+      try {
+        setIsLoading(true)
+        const data = await accountabilityService.getHabitComments(habitId)
+        setComments(data)
+      } catch (err) {
+        console.error("Failed to load comments:", err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    if (habitId) {
+      fetchComments()
+    }
   }, [habitId])
   
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // TODO: Validate comment
-    // WHY: Don't send empty comments
+    if (!newComment.trim()) {
+      return
+    }
     
-    // TODO: Set sending state
-    // WHY: Show loading
+    setIsSending(true)
     
-    // TODO: Send comment
-    // WHY: Add comment to habit
-    // APPROACH: await accountabilityService.addComment(habitId, newComment)
-    
-    // TODO: Add to local comments
-    // WHY: Immediate display
-    
-    // TODO: Clear input
-    // WHY: Ready for next comment
-    
-    // TODO: Handle errors
-    // WHY: Show error feedback
+    try {
+      const addedComment = await accountabilityService.addComment(habitId, newComment.trim())
+      setComments([...comments, addedComment])
+      setNewComment('')
+    } catch (err) {
+      console.error("Failed to add comment:", err)
+      // TODO: Show error feedback to user (could use a toast/alert component)
+    } finally {
+      setIsSending(false)
+    }
   }
   
   return (
@@ -57,21 +66,17 @@ export default function PartnerComments({ habitId }) {
         ) : comments.length === 0 ? (
           <p className="text-gray-500">No comments yet. Be the first!</p>
         ) : (
-          /* TODO: Map through comments */
-          /*
-          {comments.map(comment => (
+          comments.map(comment => (
             <div key={comment.id} className="p-3 bg-gray-50 rounded-lg">
               <div className="flex items-center space-x-2 mb-1">
-                <span className="font-medium text-sm">{comment.authorUsername}</span>
+                <span className="font-medium text-sm">{comment.author_username}</span>
                 <span className="text-xs text-gray-400">
-                  {new Date(comment.createdAt).toLocaleDateString()}
+                  {new Date(comment.created_at).toLocaleDateString()}
                 </span>
               </div>
               <p className="text-gray-700">{comment.content}</p>
             </div>
-          ))}
-          */
-          <p className="text-gray-500">Comments will appear here</p>
+          ))
         )}
       </div>
       
