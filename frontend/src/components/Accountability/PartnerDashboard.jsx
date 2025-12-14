@@ -8,8 +8,10 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import accountabilityService from '../../services/accountabilityService'
 import PartnerComments from './PartnerComments'
+import { useAuth } from '../../context/AuthContext'
 
 export default function PartnerDashboard() {
+  const { user } = useAuth()
   const [partnerships, setPartnerships] = useState([])
   const [selectedPartner, setSelectedPartner] = useState(null)
   const [partnerData, setPartnerData] = useState(null) // Includes habits & stats
@@ -40,19 +42,17 @@ export default function PartnerDashboard() {
   
   // Fetch partner details when selected
   useEffect(() => {
-    if (!selectedPartner) return
+    if (!selectedPartner || !user) return
     
     const fetchPartnerDetails = async () => {
       setLoadingHabits(true)
       try {
-        // Use the partner_id from the partnership object
-        // The API returns 'partner_id' but usually we need the user ID of the partner
-        // Check schema: if I am requester, partner is partner_id. If I am partner, partner is requester_id.
-        // The service normally normalizes this, but let's assume the object has a 'partner_id' 
-        // that represents the OTHER user ID based on backend logic usually simplifying this.
-        // Based on provided backend logic, the response handles this logic.
-        
-        const targetId = selectedPartner.partner_id || selectedPartner.id 
+        // Determine the correct partner user ID
+        // If current user is the requester, partner_id is the other user
+        // If current user is the partner, requester_id is the other user
+        const targetId = selectedPartner.requester_id === user.id 
+          ? selectedPartner.partner_id 
+          : selectedPartner.requester_id
         
         const data = await accountabilityService.getPartnerHabits(targetId)
         setPartnerData(data)
@@ -65,7 +65,7 @@ export default function PartnerDashboard() {
     }
     
     fetchPartnerDetails()
-  }, [selectedPartner])
+  }, [selectedPartner, user])
   
   if (isLoading) {
     return <div className="text-center py-12 text-gray-500">Loading partners...</div>
