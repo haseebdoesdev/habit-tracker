@@ -32,6 +32,7 @@ import AISuggestions from './components/AI/AISuggestions'
 import PartyList from './components/Party/PartyList'
 import CreateParty from './components/Party/CreateParty'
 import PartyDashboard from './components/Party/PartyDashboard'
+import CreatePartyGoal from './components/Party/CreatePartyGoal'
 import PartnerDashboard from './components/Accountability/PartnerDashboard'
 
 function App() {
@@ -72,6 +73,7 @@ function App() {
             <Route path="/parties" element={<ProtectedRoute><PartyList /></ProtectedRoute>} />
             <Route path="/parties/new" element={<ProtectedRoute><CreateParty /></ProtectedRoute>} />
             <Route path="/parties/:id" element={<ProtectedRoute><PartyDashboard /></ProtectedRoute>} />
+            <Route path="/parties/:id/goals/new" element={<ProtectedRoute><CreatePartyGoal /></ProtectedRoute>} />
             <Route path="/accountability" element={<ProtectedRoute><PartnerDashboard /></ProtectedRoute>} />
 
             {/* Catch all - redirect to dashboard or login */}
