@@ -1,67 +1,80 @@
 /**
  * StreakDisplay Component
  * =======================
- * [NOUMAN] This is your component to implement.
- * 
  * Shows streak information prominently.
  */
 
 export default function StreakDisplay({ streaks }) {
-  // TODO: Destructure streak data
-  // WHY: Access individual streak values
-  // APPROACH: const { longestStreak, totalActiveStreaks, habits } = streaks
-  
+  const { longestStreak, activeCount, habits } = streaks || { 
+    longestStreak: 0, 
+    activeCount: 0, 
+    habits: [] 
+  }
+  // habits "at risk" (Streak > 0 but not completed today)
+  const atRiskHabits = habits.filter(h => 
+    h.is_active && 
+    h.current_streak > 0 && 
+    !h.completed_today
+  )
+  const atRiskCount = atRiskHabits.length
+
   return (
-    <div className="bg-white rounded-xl shadow p-6">
-      <h2 className="text-lg font-semibold mb-4">Your Streaks 🔥</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {/* TODO: Longest streak card */}
-        <div className="text-center p-4 bg-orange-50 rounded-lg">
-          <p className="text-3xl font-bold text-orange-500">
-            {/* TODO: streaks.longestStreak */}0
-          </p>
-          <p className="text-sm text-gray-600">Longest Streak</p>
-        </div>
-        
-        {/* TODO: Active streaks count */}
-        <div className="text-center p-4 bg-green-50 rounded-lg">
-          <p className="text-3xl font-bold text-green-500">
-            {/* TODO: streaks.activeCount */}0
-          </p>
-          <p className="text-sm text-gray-600">Active Streaks</p>
-        </div>
-        
-        {/* TODO: At-risk streaks */}
-        <div className="text-center p-4 bg-yellow-50 rounded-lg">
-          <p className="text-3xl font-bold text-yellow-500">
-            {/* TODO: streaks.atRiskCount */}0
-          </p>
-          <p className="text-sm text-gray-600">At Risk Today</p>
-        </div>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+      <div className="flex items-center space-x-2 mb-4">
+        <span className="text-xl">⚡</span>
+        <h2 className="text-lg font-bold text-gray-900">Your Activity</h2>
       </div>
       
-      {/* TODO: List habits with active streaks */}
-      {/* WHY: Show which habits have streaks */}
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium text-gray-700">Habits with Streaks</h3>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="flex flex-col items-center justify-center p-4 bg-orange-50 border border-orange-100 rounded-xl">
+          <span className="text-3xl font-extrabold text-orange-600">
+            {longestStreak}
+          </span>
+          <span className="text-sm font-medium text-orange-800 mt-1">
+            Longest Streak
+          </span>
+        </div>
         
-        {/* TODO: Map through habits with streaks */}
-        {/* APPROACH: 
-        {habits.filter(h => h.currentStreak > 0).map(habit => (
-          <div key={habit.id} className="flex justify-between items-center">
-            <span>{habit.title}</span>
-            <span className="font-bold text-orange-500">
-              {habit.currentStreak} days
-            </span>
+        <div className="flex flex-col items-center justify-center p-4 bg-blue-50 border border-blue-100 rounded-xl">
+          <span className="text-3xl font-extrabold text-blue-600">
+            {activeCount}
+          </span>
+          <span className="text-sm font-medium text-blue-800 mt-1">
+            Active Streaks
+          </span>
+        </div>
+        
+        <div className={`flex flex-col items-center justify-center p-4 border rounded-xl ${
+          atRiskCount > 0 ? 'bg-red-50 border-red-100' : 'bg-green-50 border-green-100'
+        }`}>
+          <span className={`text-3xl font-extrabold ${atRiskCount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+            {atRiskCount}
+          </span>
+          <span className={`text-sm font-medium mt-1 ${atRiskCount > 0 ? 'text-red-800' : 'text-green-800'}`}>
+            {atRiskCount === 1 ? 'Streak At Risk' : 'Streaks At Risk'}
+          </span>
+        </div>
+      </div>
+
+      {atRiskCount > 0 && (
+        <div className="mt-4 pt-4 border-t border-gray-100">
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            Don't lose these streaks!
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {atRiskHabits.slice(0, 3).map(habit => (
+              <span key={habit.id} className="inline-flex items-center px-2.5 py-0.5 rounded-md text-sm font-medium bg-red-100 text-red-800">
+                {habit.title} ({habit.current_streak})
+              </span>
+            ))}
+            {atRiskHabits.length > 3 && (
+              <span className="text-sm text-gray-500 self-center">
+                +{atRiskHabits.length - 3} more
+              </span>
+            )}
           </div>
-        ))}
-        */}
-        <p className="text-gray-500 text-sm">
-          Complete habits to build streaks!
-        </p>
-      </div>
+        </div>
+      )}
     </div>
   )
 }
-
