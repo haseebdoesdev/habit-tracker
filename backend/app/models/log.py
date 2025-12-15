@@ -41,6 +41,8 @@ class Log(Base):
     # Relationships
     habit = relationship("Habit", back_populates="logs")
     user = relationship("User", back_populates="logs")
+
+    comments = relationship("Comment", back_populates="log")
     
     # Constraints - prevent duplicate logs for same habit on same day
     __table_args__ = (

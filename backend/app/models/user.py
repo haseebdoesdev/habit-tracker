@@ -61,3 +61,5 @@ class User(Base):
     created_parties = relationship("Party", back_populates="creator", foreign_keys="Party.creator_id")
     # Relationship for party goals created by this user
     created_party_goals = relationship("PartyGoal", back_populates="created_by")
+
+    comments = relationship("Comment", back_populates="user")
