@@ -43,43 +43,45 @@ export default function PartyLeaderboard({ partyId }) {
   }
   
   if (error) {
-    return <div className="bg-red-50 text-red-600 p-3 rounded-lg">{error}</div>
+    return <div className="bg-terracotta-600/20 border border-terracotta-500/50 text-terracotta-300 p-3 rounded-organic">{error}</div>
   }
   
   return (
     <div className="space-y-4">
-      <h2 className="text-lg font-semibold">Party Leaderboard</h2>
+      <h2 className="text-lg font-semibold text-gray-200">Party Leaderboard</h2>
       
       {leaderboard.length === 0 ? (
-        <p className="text-gray-500 text-center py-8">No members found.</p>
+        <div className="empty-state">
+          <p className="empty-state-text">No members found.</p>
+        </div>
       ) : (
         <div className="space-y-2">
           {leaderboard.map((member, index) => (
             <div 
               key={member.id || member.user_id} 
-              className={`flex items-center justify-between p-4 rounded-lg ${
-                index === 0 ? 'bg-yellow-50 border border-yellow-200' :
-                index === 1 ? 'bg-gray-100' :
-                index === 2 ? 'bg-orange-50' :
-                'bg-gray-50'
+              className={`card flex items-center justify-between ${
+                index === 0 ? 'bg-sunset-600/20 border-sunset-500/50' :
+                index === 1 ? 'bg-dark-300/50' :
+                index === 2 ? 'bg-sunset-600/10 border-sunset-500/30' :
+                ''
               }`}
             >
               <div className="flex items-center space-x-4">
-                <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                  index === 0 ? 'bg-yellow-400 text-white' :
-                  index === 1 ? 'bg-gray-400 text-white' :
-                  index === 2 ? 'bg-orange-400 text-white' :
-                  'bg-gray-200 text-gray-600'
+                <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold shadow-soft ${
+                  index === 0 ? 'bg-gradient-to-br from-sunset-500 to-sunset-600 text-white' :
+                  index === 1 ? 'bg-dark-400 text-gray-300' :
+                  index === 2 ? 'bg-sunset-600/50 text-sunset-300' :
+                  'bg-dark-400 text-gray-400'
                 }`}>
                   {index + 1}
                 </span>
-                <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white">
+                <div className="w-10 h-10 bg-gradient-to-br from-accent-500 to-accent-600 rounded-full flex items-center justify-center text-white shadow-soft">
                   {member.username?.charAt(0).toUpperCase() || '?'}
                 </div>
-                <span className="font-medium">{member.username || 'Unknown'}</span>
+                <span className="font-medium text-gray-200">{member.username || 'Unknown'}</span>
               </div>
               <div className="text-right">
-                <p className="font-bold text-blue-600">{member.contribution_points || member.contributionPoints || 0}</p>
+                <p className="font-bold text-accent-400">{member.contribution_points || member.contributionPoints || 0}</p>
                 <p className="text-xs text-gray-500">points</p>
               </div>
             </div>

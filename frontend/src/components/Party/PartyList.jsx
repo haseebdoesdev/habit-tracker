@@ -56,47 +56,59 @@ export default function PartyList() {
     try {
       const result = await partyService.joinParty(inviteCode)
       setInviteCode('')
-      navigate(`/parties/${result.id || result.party?.id}`)
+      // Refresh parties list after joining
+      const allParties = await partyService.getParties()
+      setMyParties(Array.isArray(allParties) ? allParties : [])
+      
+      // Navigate to the party if we have the ID
+      const partyId = result.party_id || result.id || result.party?.id
+      if (partyId) {
+        navigate(`/parties/${partyId}`)
+      } else {
+        // If no ID, just refresh the list
+        const publicOnly = await partyService.getParties({ publicOnly: true })
+        setPublicParties(Array.isArray(publicOnly) ? publicOnly : [])
+      }
     } catch (err) {
       setJoinError(err.message || 'Failed to join party')
     }
   }
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Parties</h1>
+        <h1 className="text-2xl font-bold text-gray-200">Parties</h1>
         <Link
           to="/parties/new"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="btn-primary"
         >
           Create Party
         </Link>
       </div>
       
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4">{error}</div>
+        <div className="bg-terracotta-600/20 border border-terracotta-500/50 text-terracotta-300 p-3 rounded-organic mb-4">{error}</div>
       )}
       
-      <div className="bg-white rounded-xl shadow p-4">
-        <h3 className="font-medium mb-3">Join with Invite Code</h3>
-        <form onSubmit={handleJoinWithCode} className="flex space-x-3">
+      <div className="card">
+        <h3 className="font-medium text-gray-200 mb-3">Join with Invite Code</h3>
+        <form onSubmit={handleJoinWithCode} className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3">
           <input
             type="text"
             value={inviteCode}
             onChange={(e) => setInviteCode(e.target.value)}
             placeholder="Enter invite code"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="input flex-1"
           />
           <button
             type="submit"
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+            className="btn-primary bg-solar-500 hover:bg-solar-600"
           >
             Join
           </button>
         </form>
         {joinError && (
-          <p className="text-red-600 text-sm mt-2">{joinError}</p>
+          <p className="text-terracotta-300 text-sm mt-2">{joinError}</p>
         )}
       </div>
       
@@ -105,22 +117,24 @@ export default function PartyList() {
       ) : (
         <>
           <div>
-            <h2 className="text-lg font-semibold mb-4">My Parties</h2>
+            <h2 className="text-lg font-semibold text-gray-200 mb-4">My Parties</h2>
             {myParties.length === 0 ? (
-              <p className="text-gray-500">You haven't joined any parties yet.</p>
+              <div className="empty-state">
+                <p className="empty-state-text">You haven't joined any parties yet.</p>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {myParties.map(party => (
                   <Link
                     key={party.id}
                     to={`/parties/${party.id}`}
-                    className="bg-white rounded-xl shadow p-4 hover:shadow-lg transition-shadow"
+                    className="card-hover"
                   >
-                    <h3 className="font-semibold text-lg mb-2">{party.name}</h3>
-                    <p className="text-gray-500 text-sm mb-3">{party.description || 'No description'}</p>
+                    <h3 className="font-semibold text-lg mb-2 text-gray-200">{party.name}</h3>
+                    <p className="text-gray-400 text-sm mb-3">{party.description || 'No description'}</p>
                     <div className="flex justify-between text-sm">
-                      <span className="text-gray-600">{party.member_count || party.members?.length || 0} members</span>
-                      <span className="text-blue-600">View →</span>
+                      <span className="text-gray-400">{party.member_count || party.members?.length || 0} members</span>
+                      <span className="text-accent-400">View →</span>
                     </div>
                   </Link>
                 ))}
@@ -129,23 +143,25 @@ export default function PartyList() {
           </div>
           
           <div className="mt-6">
-            <h2 className="text-lg font-semibold mb-4">Public Parties</h2>
+            <h2 className="text-lg font-semibold text-gray-200 mb-4">Public Parties</h2>
             {publicParties.length === 0 ? (
-              <p className="text-gray-500">No public parties available.</p>
+              <div className="empty-state">
+                <p className="empty-state-text">No public parties available.</p>
+              </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {publicParties.map(party => (
                   <div
                     key={party.id}
-                    className="bg-white rounded-xl shadow p-4"
+                    className="card"
                   >
-                    <h3 className="font-semibold text-lg mb-2">{party.name}</h3>
-                    <p className="text-gray-500 text-sm mb-3">{party.description || 'No description'}</p>
+                    <h3 className="font-semibold text-lg mb-2 text-gray-200">{party.name}</h3>
+                    <p className="text-gray-400 text-sm mb-3">{party.description || 'No description'}</p>
                     <div className="flex justify-between items-center">
-                      <span className="text-gray-600 text-sm">{party.member_count || party.members?.length || 0} members</span>
+                      <span className="text-gray-400 text-sm">{party.member_count || party.members?.length || 0} members</span>
                       <Link
                         to={`/parties/${party.id}`}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                        className="btn-primary text-sm px-4 py-2"
                       >
                         View
                       </Link>

@@ -8,8 +8,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 export default function MoodTrendChart({ data = [] }) {
   if (!data || data.length === 0) {
     return (
-      <div className="w-full h-64 flex items-center justify-center bg-gray-50 rounded-lg">
-        <p className="text-gray-500">No mood data available</p>
+      <div className="w-full h-64 flex items-center justify-center bg-dark-300/50 rounded-soft">
+        <p className="text-gray-400">No mood data available</p>
       </div>
     )
   }
@@ -38,18 +38,20 @@ export default function MoodTrendChart({ data = [] }) {
     <div className="w-full h-64">
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={chartData}>
-          <CartesianGrid strokeDasharray="3 3" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#4a4a4a" />
           <XAxis
             dataKey="date"
-            tick={{ fontSize: 12 }}
+            tick={{ fontSize: 12, fill: '#9ca3af' }}
             interval="preserveStartEnd"
           />
           <YAxis
-            tick={{ fontSize: 12 }}
+            tick={{ fontSize: 12, fill: '#9ca3af' }}
             domain={[0, 100]}
             tickFormatter={(value) => `${value}%`}
           />
           <Tooltip
+            contentStyle={{ backgroundColor: '#2a2a2a', border: '1px solid #4a4a4a', borderRadius: '0.5rem' }}
+            labelStyle={{ color: '#e5e7eb' }}
             formatter={(value, name, props) => [
               `${value}% (${props.payload.mood})`,
               'Mood Intensity'
@@ -58,15 +60,18 @@ export default function MoodTrendChart({ data = [] }) {
           <Line
             type="monotone"
             dataKey="intensity"
-            stroke="#3B82F6"
+            stroke="#3b82f6"
             strokeWidth={2}
-            dot={{ fill: '#3B82F6', r: 4 }}
+            dot={{ fill: '#3b82f6', r: 4 }}
           />
         </LineChart>
       </ResponsiveContainer>
     </div>
   )
 }
+
+
+
 
 
 

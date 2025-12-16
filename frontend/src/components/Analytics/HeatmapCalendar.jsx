@@ -13,11 +13,11 @@ export default function HeatmapCalendar({ data = [] }) {
 
   // Calculate intensity level based on count
   const getIntensityClass = (count) => {
-    if (count === 0) return 'bg-gray-100'
-    if (count <= 2) return 'bg-green-200'
-    if (count <= 4) return 'bg-green-400'
-    if (count <= 6) return 'bg-green-600'
-    return 'bg-green-800'
+    if (count === 0) return 'bg-dark-400'
+    if (count <= 2) return 'bg-solar-600/40'
+    if (count <= 4) return 'bg-solar-500/60'
+    if (count <= 6) return 'bg-solar-500/80'
+    return 'bg-solar-500'
   }
 
   // Generate weeks grid (52 weeks x 7 days)
@@ -96,9 +96,9 @@ export default function HeatmapCalendar({ data = [] }) {
                 <div
                   key={dayIndex}
                   className={`w-3 h-3 rounded-sm ${day.isFuture
-                      ? 'bg-gray-50'
+                      ? 'bg-dark-400'
                       : getIntensityClass(day.count)
-                    } ${day.isToday ? 'ring-1 ring-blue-500' : ''}`}
+                    } ${day.isToday ? 'ring-1 ring-accent-500' : ''}`}
                   title={`${formatDate(day.date)}: ${day.count} completions`}
                 />
               ))}
@@ -109,13 +109,13 @@ export default function HeatmapCalendar({ data = [] }) {
 
       {/* Legend */}
       <div className="flex items-center justify-end mt-4 space-x-2">
-        <span className="text-xs text-gray-500">Less</span>
-        <div className="w-3 h-3 bg-gray-100 rounded-sm"></div>
-        <div className="w-3 h-3 bg-green-200 rounded-sm"></div>
-        <div className="w-3 h-3 bg-green-400 rounded-sm"></div>
-        <div className="w-3 h-3 bg-green-600 rounded-sm"></div>
-        <div className="w-3 h-3 bg-green-800 rounded-sm"></div>
-        <span className="text-xs text-gray-500">More</span>
+        <span className="text-xs text-gray-400">Less</span>
+        <div className="w-3 h-3 bg-dark-400 rounded-sm"></div>
+        <div className="w-3 h-3 bg-solar-600/40 rounded-sm"></div>
+        <div className="w-3 h-3 bg-solar-500/60 rounded-sm"></div>
+        <div className="w-3 h-3 bg-solar-500/80 rounded-sm"></div>
+        <div className="w-3 h-3 bg-solar-500 rounded-sm"></div>
+        <span className="text-xs text-gray-400">More</span>
       </div>
     </div>
   )

@@ -79,33 +79,33 @@ export default function AnalyticsDashboard() {
   }
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+    <div className="space-y-6 animate-fade-in">
+      <h1 className="text-2xl font-bold text-gray-200">Analytics</h1>
 
       {/* Overview stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-xl shadow p-4">
-          <p className="text-sm text-gray-500">Total Habits</p>
-          <p className="text-2xl font-bold">{overview?.total_habits || overview?.totalHabits || 0}</p>
+        <div className="card-hover">
+          <p className="text-sm text-gray-400 mb-2">Total Habits</p>
+          <p className="text-2xl font-bold text-gray-200">{overview?.total_habits || overview?.totalHabits || 0}</p>
         </div>
 
-        <div className="bg-white rounded-xl shadow p-4">
-          <p className="text-sm text-gray-500">This Week</p>
-          <p className="text-2xl font-bold text-green-600">
+        <div className="card-hover">
+          <p className="text-sm text-gray-400 mb-2">This Week</p>
+          <p className="text-2xl font-bold text-solar-400">
             {Math.round((overview?.this_week_completion_rate || overview?.weeklyRate || 0) * 100)}%
           </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow p-4">
-          <p className="text-sm text-gray-500">Total Completions</p>
-          <p className="text-2xl font-bold text-blue-600">
+        <div className="card-hover">
+          <p className="text-sm text-gray-400 mb-2">Total Completions</p>
+          <p className="text-2xl font-bold text-accent-400">
             {overview?.total_completions || overview?.totalCompletions || 0}
           </p>
         </div>
 
-        <div className="bg-white rounded-xl shadow p-4">
-          <p className="text-sm text-gray-500">Active Streaks</p>
-          <p className="text-2xl font-bold text-orange-600">
+        <div className="card-hover">
+          <p className="text-sm text-gray-400 mb-2">Active Streaks</p>
+          <p className="text-2xl font-bold text-sunset-400">
             {overview?.current_active_streaks || overview?.activeStreaks || 0}
           </p>
         </div>
@@ -117,10 +117,11 @@ export default function AnalyticsDashboard() {
           <button
             key={p}
             onClick={() => setPeriod(p)}
-            className={`px-4 py-2 rounded-lg ${period === p
-                ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
-              }`}
+            className={`px-4 py-2 rounded-organic transition-all ${
+              period === p
+                ? 'bg-accent-500 text-white shadow-soft'
+                : 'bg-dark-300 text-gray-300 hover:bg-dark-400'
+            }`}
           >
             {p.charAt(0).toUpperCase() + p.slice(1)}
           </button>
@@ -128,33 +129,33 @@ export default function AnalyticsDashboard() {
       </div>
 
       {/* Progress Chart */}
-      <div className="bg-white rounded-xl shadow p-6">
-        <h2 className="text-lg font-semibold mb-4">Progress Over Time</h2>
+      <div className="card">
+        <h2 className="text-lg font-semibold text-gray-200 mb-4">Progress Over Time</h2>
         <ProgressChart data={chartData} period={period} />
       </div>
 
       {/* Heatmap Calendar */}
-      <div className="bg-white rounded-xl shadow p-6">
-        <h2 className="text-lg font-semibold mb-4">Activity Heatmap</h2>
+      <div className="card">
+        <h2 className="text-lg font-semibold text-gray-200 mb-4">Activity Heatmap</h2>
         <HeatmapCalendar data={heatmapData} />
       </div>
 
       {/* Category breakdown */}
-      <div className="bg-white rounded-xl shadow p-6">
-        <h2 className="text-lg font-semibold mb-4">By Category</h2>
+      <div className="card">
+        <h2 className="text-lg font-semibold text-gray-200 mb-4">By Category</h2>
         <div className="space-y-3">
           {categories.length > 0 ? (
             categories.map(category => (
               <div key={category.name} className="space-y-1">
                 <div className="flex justify-between text-sm">
-                  <span className="capitalize">{category.name}</span>
+                  <span className="capitalize text-gray-300">{category.name}</span>
                   <span className="text-gray-500">
                     {category.total_habits || category.totalHabits || 0} habits
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-dark-400 rounded-full h-2">
                   <div
-                    className="bg-blue-600 h-2 rounded-full"
+                    className="bg-accent-500 h-2 rounded-full transition-all"
                     style={{
                       width: `${Math.min((category.completion_rate || category.completionRate || 0) * 10, 100)}%`
                     }}
@@ -163,7 +164,7 @@ export default function AnalyticsDashboard() {
               </div>
             ))
           ) : (
-            <p className="text-gray-500">No category data available</p>
+            <p className="text-gray-400">No category data available</p>
           )}
         </div>
       </div>

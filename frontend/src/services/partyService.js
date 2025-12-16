@@ -10,7 +10,7 @@ import api from './api'
 
 const partyService = {
   async getParties(options = {}) {
-    return api.get('/parties', { params: options })
+    return api.get('/parties/', { params: options })
       .then(response => response.data)
       .catch(error => {
         throw error
@@ -26,7 +26,7 @@ const partyService = {
   },
 
   async createParty(partyData) {
-    return api.post('/parties', partyData)
+    return api.post('/parties/', partyData)
       .then(response => response.data)
       .catch(error => {
         throw error

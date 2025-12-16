@@ -66,20 +66,17 @@ export default function AISuggestions() {
   }
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-            <span>✨</span> AI Suggestions
-          </h1>
-          <p className="text-gray-500 text-sm mt-1">
-            Personalized habit ideas powered by Gemini
-          </p>
+          <h2 className="text-lg font-semibold text-gray-200">
+            Personalized habit ideas powered by AI
+          </h2>
         </div>
         <button
           onClick={fetchSuggestions}
           disabled={isLoading}
-          className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors text-sm font-medium"
+          className="btn-secondary text-sm px-4 py-2"
         >
           {isLoading ? 'Thinking...' : 'Refresh Ideas'}
         </button>
@@ -89,10 +86,10 @@ export default function AISuggestions() {
           <button
             key={cat.id || 'all'}
             onClick={() => setCategory(cat.id)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+            className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
               category === cat.id
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                ? 'bg-accent-500 text-white shadow-soft'
+                : 'bg-white/10 text-gray-300 hover:bg-white/20 border border-dark-400/50'
             }`}
           >
             {cat.label}
@@ -100,18 +97,18 @@ export default function AISuggestions() {
         ))}
       </div>      
       {error && (
-        <div className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-xl text-sm">
+        <div className="bg-terracotta-600/20 border border-terracotta-500/50 text-terracotta-300 p-4 rounded-organic text-sm">
           {error}
         </div>
       )}      
       {isLoading && (
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-100 border-dashed">
+        <div className="text-center py-12 card border-dashed">
           <LoadingSpinner size="md" message={`Asking AI for ${category || 'new'} habit ideas...`} />
         </div>
       )}      
       {!isLoading && suggestions.length === 0 && !error && (
-        <div className="text-center py-12 bg-gray-50 rounded-xl border border-gray-200 border-dashed">
-          <p className="text-gray-500">No suggestions found. Try a different category!</p>
+        <div className="text-center py-12 card border-dashed">
+          <p className="text-gray-400">No suggestions found. Try a different category!</p>
         </div>
       )}      
       {!isLoading && suggestions.length > 0 && (
@@ -119,23 +116,23 @@ export default function AISuggestions() {
           {suggestions.map((suggestion, index) => (
             <div 
               key={index} 
-              className="bg-white p-6 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex flex-col"
+              className="card flex flex-col hover:shadow-gentle transition-all duration-300"
             >
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="font-semibold text-lg text-gray-900">{suggestion.title}</h3>
-                <span className="px-2.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded-full font-medium">
+              <div className="flex justify-between items-start mb-3">
+                <h3 className="font-semibold text-lg text-gray-200">{suggestion.title}</h3>
+                <span className="px-3 py-1 bg-white/20 text-gray-300 text-xs rounded-full font-medium border border-dark-400/50">
                   {suggestion.category}
                 </span>
               </div>
               
-              <p className="text-gray-600 text-sm mb-4 flex-grow">
+              <p className="text-gray-400 text-sm mb-4 flex-grow">
                 {suggestion.description}
               </p>
               
               <button
                 onClick={() => handleAddHabit(suggestion, index)}
                 disabled={addingId !== null}
-                className="w-full py-2 px-4 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg font-medium text-sm transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2.5 px-4 bg-white/10 hover:bg-white/20 text-accent-400 hover:text-accent-300 rounded-soft font-medium text-sm transition-all duration-200 flex items-center justify-center gap-2 border border-accent-500/30 hover:border-accent-500/50"
               >
                 {addingId === index ? (
                   <>Adding...</>

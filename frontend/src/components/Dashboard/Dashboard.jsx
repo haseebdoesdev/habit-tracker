@@ -12,6 +12,7 @@ import LoadingState from '../Common/LoadingState'
 import habitService from '../../services/habitService'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
+import { SparklesIcon, SeedlingIcon } from '../Common/Icons'
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -113,29 +114,37 @@ export default function Dashboard() {
   }
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-fade-in">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500">Welcome back, {user?.username}</p>
+          <h1 className="text-3xl font-bold text-gradient-martian mb-2">Dashboard</h1>
+          <p className="text-gray-400 font-medium">Welcome back, {user?.username}</p>
         </div>
-        <Link 
-          to="/habits/new" 
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          + New Habit
-        </Link>
+        <div className="flex gap-3">
+          <Link 
+            to={`/logs/daily/${new Date().toISOString().split('T')[0]}`}
+            className="btn-secondary"
+          >
+            Today's Logs
+          </Link>
+          <Link 
+            to="/habits/new" 
+            className="btn-primary"
+          >
+            + New Habit
+          </Link>
+        </div>
       </div>
       
       {/* AI Motivation Message */}
       {motivation && (
-        <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
+        <div className="card-elevated bg-gradient-to-br from-accent-500/90 to-accent-600/90 text-white glow-accent animate-slide-up">
           <div className="flex items-start space-x-4">
-            <span className="text-2xl">✨</span>
-            <div>
-              <h3 className="font-semibold text-lg opacity-90">Daily Motivation</h3>
-              <p className="mt-1 font-medium text-lg leading-relaxed">
+            <SparklesIcon className="w-6 h-6 animate-gentle-pulse flex-shrink-0 mt-1" />
+            <div className="flex-1">
+              <h3 className="font-semibold text-xl opacity-95 mb-2">Daily Motivation</h3>
+              <p className="font-medium text-lg leading-relaxed opacity-90">
                 "{motivation}"
               </p>
             </div>
@@ -144,43 +153,44 @@ export default function Dashboard() {
       )}
       
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-500 font-medium">Active Habits</p>
-          <p className="text-2xl font-bold text-gray-900">{stats?.total_active_habits || 0}</p>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 animate-slide-up" style={{ animationDelay: '0.1s' }}>
+        <div className="card-hover">
+          <p className="text-sm text-gray-400 font-medium mb-2">Active Habits</p>
+          <p className="text-3xl font-bold text-gray-200">{stats?.total_active_habits || 0}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-500 font-medium">Total Completions</p>
-          <p className="text-2xl font-bold text-blue-600">{stats?.total_completions || 0}</p>
+        <div className="card-hover">
+          <p className="text-sm text-gray-400 font-medium mb-2">Total Completions</p>
+          <p className="text-3xl font-bold text-accent-400">{stats?.total_completions || 0}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-500 font-medium">Completion Rate</p>
-          <p className="text-2xl font-bold text-green-600">
+        <div className="card-hover">
+          <p className="text-sm text-gray-400 font-medium mb-2">Completion Rate</p>
+          <p className="text-3xl font-bold text-solar-400">
             {Math.round((stats?.today_completion_rate || 0) * 100)}%
           </p>
-          <p className="text-xs text-gray-400">Today</p>
+          <p className="text-xs text-gray-500 mt-1">Today</p>
         </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-          <p className="text-sm text-gray-500 font-medium">Current Streaks</p>
-          <p className="text-2xl font-bold text-orange-500">{stats?.current_active_streaks || 0}</p>
+        <div className="card-hover">
+          <p className="text-sm text-gray-400 font-medium mb-2">Current Streaks</p>
+          <p className="text-3xl font-bold text-sunset-400">{stats?.current_active_streaks || 0}</p>
         </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Today's Habits List */}
-        <div className="lg:col-span-2 space-y-4">
-          <h2 className="text-lg font-semibold text-gray-800">Today's Schedule</h2>
+        <div className="lg:col-span-2 space-y-5 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+          <h2 className="text-xl font-semibold text-gray-200">Today's Schedule</h2>
           
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="card overflow-hidden">
             {todaysHabits.length === 0 ? (
-              <div className="p-8 text-center">
-                <p className="text-gray-500 mb-4">No habits scheduled for today.</p>
-                <Link to="/habits/new" className="text-blue-600 font-medium hover:underline">
+              <div className="empty-state">
+                <SeedlingIcon className="empty-state-icon text-gray-600" />
+                <p className="empty-state-text">No habits scheduled for today.</p>
+                <Link to="/habits/new" className="link mt-4 inline-block">
                   Create a new habit
                 </Link>
               </div>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-dark-400/50">
                 {todaysHabits.map(habit => (
                   <HabitCard 
                     key={habit.id} 
@@ -194,15 +204,15 @@ export default function Dashboard() {
           </div>
         </div>
         
-        <div className="space-y-6">
+        <div className="space-y-6 animate-slide-up" style={{ animationDelay: '0.3s' }}>
           <StreakDisplay streaks={streakData} />
           
-          <div className="bg-blue-50 rounded-xl p-5 border border-blue-100">
-            <h3 className="font-semibold text-blue-900 mb-2">View Analytics</h3>
-            <p className="text-sm text-blue-700 mb-3">Check your weekly progress and detailed stats.</p>
+          <div className="card bg-dark-300/50 border-dark-500/50">
+            <h3 className="font-semibold text-gray-200 mb-2 text-lg">View Analytics</h3>
+            <p className="text-sm text-gray-400 mb-4 leading-relaxed">Check your weekly progress and detailed stats.</p>
             <Link 
               to="/analytics" 
-              className="block w-full py-2 bg-blue-600 text-white text-center rounded-lg hover:bg-blue-700 font-medium transition-colors"
+              className="btn-primary w-full text-center"
             >
               Go to Analytics
             </Link>

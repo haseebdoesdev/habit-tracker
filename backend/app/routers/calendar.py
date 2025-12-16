@@ -77,14 +77,13 @@ async def get_oauth_url(
     }
 
 
-@router.get("/oauth/callback")
-async def oauth_callback(
-    code: str = Query(..., description="Authorization code from Google"),
-    state: str = Query(..., description="State parameter for CSRF protection"),
-    db: Session = Depends(get_db)
+async def _handle_oauth_callback(
+    code: str,
+    state: str,
+    db: Session
 ):
     """
-    Handle OAuth callback from Google.
+    Internal handler for OAuth callback logic.
     """
     # Verify state
     state_data = oauth_states.get(state)
@@ -115,6 +114,31 @@ async def oauth_callback(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
+
+@router.get("/oauth/callback")
+async def oauth_callback(
+    code: str = Query(..., description="Authorization code from Google"),
+    state: str = Query(..., description="State parameter for CSRF protection"),
+    db: Session = Depends(get_db)
+):
+    """
+    Handle OAuth callback from Google (primary endpoint).
+    """
+    return await _handle_oauth_callback(code, state, db)
+
+
+@router.get("/callback")
+async def oauth_callback_alt(
+    code: str = Query(..., description="Authorization code from Google"),
+    state: str = Query(..., description="State parameter for CSRF protection"),
+    db: Session = Depends(get_db)
+):
+    """
+    Handle OAuth callback from Google (alternative endpoint for backwards compatibility).
+    Some OAuth configurations may use /callback instead of /oauth/callback.
+    """
+    return await _handle_oauth_callback(code, state, db)
 
 
 @router.get("/status")

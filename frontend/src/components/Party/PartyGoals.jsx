@@ -49,12 +49,12 @@ export default function PartyGoals({ partyId }) {
   }
   
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-semibold">Party Goals</h2>
+        <h2 className="text-lg font-semibold text-gray-200">Party Goals</h2>
         <Link
           to={`/parties/${partyId}/goals/new`}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="btn-primary text-sm px-4 py-2"
         >
           + New Goal
         </Link>
@@ -66,10 +66,10 @@ export default function PartyGoals({ partyId }) {
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-3 py-1 rounded-lg capitalize ${
+            className={`px-3 py-1 rounded-organic capitalize transition-all ${
               filter === f
-                ? 'bg-blue-100 text-blue-600'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-accent-500 text-white shadow-soft'
+                : 'bg-dark-300 text-gray-300 hover:bg-dark-400'
             }`}
           >
             {f}
@@ -78,7 +78,7 @@ export default function PartyGoals({ partyId }) {
       </div>
       
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4">{error}</div>
+        <div className="bg-terracotta-600/20 border border-terracotta-500/50 text-terracotta-300 p-3 rounded-organic mb-4">{error}</div>
       )}
       
       {isLoading ? (
@@ -86,10 +86,12 @@ export default function PartyGoals({ partyId }) {
       ) : (
         <div className="space-y-4">
           {goals.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">No goals found. Create your first goal!</p>
+            <div className="empty-state">
+              <p className="empty-state-text">No goals found. Create your first goal!</p>
+            </div>
           ) : (
             goals.map(goal => (
-              <div key={goal.id} className="p-4 bg-gray-50 rounded-lg">
+              <div key={goal.id} className="card">
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="font-medium">{goal.title}</h3>
                   <span className={`px-2 py-1 rounded text-sm ${
@@ -120,7 +122,7 @@ export default function PartyGoals({ partyId }) {
                 {goal.status === 'ACTIVE' && (
                   <button
                     onClick={() => handleContribute(goal.id)}
-                    className="mt-3 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    className="btn-primary bg-solar-500 hover:bg-solar-600 mt-3 text-sm px-4 py-2"
                   >
                     Contribute
                   </button>

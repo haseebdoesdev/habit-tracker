@@ -105,18 +105,18 @@ export default function EditHabit() {
   }
   
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Edit Habit</h1>
+    <div className="max-w-2xl mx-auto animate-fade-in">
+      <h1 className="text-2xl font-bold text-gray-200 mb-6">Edit Habit</h1>
       
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4">
+        <div className="bg-terracotta-600/20 border border-terracotta-500/50 text-terracotta-300 p-3 rounded-organic mb-4">
           {error}
         </div>
       )}
       
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-6 space-y-6">
+      <form onSubmit={handleSubmit} className="card space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
             Habit Title *
           </label>
           <input
@@ -124,13 +124,13 @@ export default function EditHabit() {
             type="text"
             value={formData.title}
             onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="input"
             required
           />
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
             Description
           </label>
           <textarea
@@ -139,19 +139,19 @@ export default function EditHabit() {
             onChange={handleChange}
             rows={3}
             placeholder="Why is this habit important to you?"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="input resize-none"
           />
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
             Frequency
           </label>
           <select
             name="frequency"
             value={formData.frequency}
             onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="input"
           >
             <option value="daily">Daily</option>
             <option value="weekly">Weekly</option>
@@ -160,14 +160,14 @@ export default function EditHabit() {
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
             Category
           </label>
           <select
             name="category"
             value={formData.category}
             onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="input"
           >
             <option value="">Select a category</option>
             <option value="Health">Health</option>
@@ -180,7 +180,7 @@ export default function EditHabit() {
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
             Reminder Time (optional)
           </label>
           <input
@@ -188,12 +188,12 @@ export default function EditHabit() {
             type="time"
             value={formData.reminderTime}
             onChange={handleChange}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="input"
           />
         </div>
         
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
             Color
           </label>
           <input
@@ -201,7 +201,7 @@ export default function EditHabit() {
             type="color"
             value={formData.color}
             onChange={handleChange}
-            className="h-10 w-20 rounded cursor-pointer"
+            className="h-10 w-20 rounded-soft cursor-pointer border border-dark-400"
           />
         </div>
         
@@ -211,9 +211,9 @@ export default function EditHabit() {
             name="isActive"
             checked={formData.isActive}
             onChange={handleChange}
-            className="w-4 h-4 text-blue-600 rounded"
+            className="w-4 h-4 text-accent-500 rounded focus:ring-accent-500"
           />
-          <label className="text-sm text-gray-700">
+          <label className="text-sm text-gray-300">
             Active (uncheck to pause this habit)
           </label>
         </div>
@@ -222,24 +222,24 @@ export default function EditHabit() {
           <button
             type="submit"
             disabled={isSaving}
-            className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="btn-primary flex-1"
           >
             {isSaving ? 'Saving...' : 'Save Changes'}
           </button>
           <button
             type="button"
             onClick={() => window.history.back()}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="btn-secondary"
           >
             Cancel
           </button>
         </div>
         
-        <div className="pt-4 border-t">
+        <div className="pt-4 border-t border-dark-400">
           <button
             type="button"
             onClick={handleDelete}
-            className="text-red-600 hover:text-red-800"
+            className="text-terracotta-400 hover:text-terracotta-300 transition-colors"
           >
             Delete Habit
           </button>

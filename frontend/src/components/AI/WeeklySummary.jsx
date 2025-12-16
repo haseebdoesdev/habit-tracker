@@ -7,6 +7,7 @@
 import { useState, useEffect } from 'react'
 import LoadingSpinner from '../Common/LoadingSpinner'
 import aiService from '../../services/aiService'
+import { ChartIcon } from '../Common/Icons'
 
 export default function WeeklySummary() {
   const [summary, setSummary] = useState(null)
@@ -32,7 +33,7 @@ export default function WeeklySummary() {
   
   if (isLoading) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="card">
         <LoadingSpinner size="md" message="Loading summary..." />
       </div>
     )
@@ -40,7 +41,7 @@ export default function WeeklySummary() {
   
   if (error) {
     return (
-      <div className="bg-red-50 text-red-600 p-4 rounded-xl border border-red-100 text-sm">
+      <div className="bg-terracotta-600/20 border border-terracotta-500/50 text-terracotta-300 p-4 rounded-organic text-sm">
         {error}
       </div>
     )
@@ -49,13 +50,13 @@ export default function WeeklySummary() {
   if (!summary) return null
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="p-6 border-b border-gray-50 bg-gradient-to-r from-blue-50 to-white">
+    <div className="card overflow-hidden">
+      <div className="p-6 border-b border-dark-400/50 bg-gradient-to-r from-accent-600/20 to-dark-200/50">
         <div className="flex items-center gap-2 mb-2">
-          <span className="text-xl">📊</span>
-          <h2 className="text-xl font-bold text-gray-900">Weekly AI Report</h2>
+          <ChartIcon className="w-5 h-5 text-accent-400" />
+          <h2 className="text-xl font-bold text-gray-200">Weekly AI Report</h2>
         </div>
-        <p className="text-gray-600 italic">
+        <p className="text-gray-400 italic">
           "{summary.summary || "Here is your progress overview for the week."}"
         </p>
       </div>
@@ -64,13 +65,13 @@ export default function WeeklySummary() {
         {/* Highlights Section */}
         {summary.highlights && summary.highlights.length > 0 && (
           <div className="space-y-3">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide flex items-center gap-2">
-              <span className="text-yellow-500">⭐</span> Highlights
+            <h3 className="text-sm font-bold text-gray-200 uppercase tracking-wide flex items-center gap-2">
+              <span className="text-sunset-400">⭐</span> Highlights
             </h3>
             <ul className="space-y-2">
               {summary.highlights.map((highlight, i) => (
-                <li key={i} className="flex items-start text-gray-700 bg-yellow-50 p-3 rounded-lg border border-yellow-100">
-                  <span className="mr-2 text-yellow-600">•</span>
+                <li key={i} className="flex items-start text-gray-300 bg-sunset-600/20 p-3 rounded-soft border border-sunset-500/50">
+                  <span className="mr-2 text-sunset-400">•</span>
                   {highlight}
                 </li>
               ))}
@@ -79,26 +80,26 @@ export default function WeeklySummary() {
         )}        
         {summary.insights && (
           <div className="space-y-3">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide flex items-center gap-2">
-              <span className="text-purple-500">💡</span> Insights
+            <h3 className="text-sm font-bold text-gray-200 uppercase tracking-wide flex items-center gap-2">
+              <span className="text-accent-400">💡</span> Insights
             </h3>
-            <div className="bg-purple-50 p-4 rounded-lg border border-purple-100 text-gray-700 leading-relaxed">
+            <div className="bg-accent-600/20 p-4 rounded-soft border border-accent-500/50 text-gray-300 leading-relaxed">
               {summary.insights}
             </div>
           </div>
         )}        
         {summary.recommendations && summary.recommendations.length > 0 && (
           <div className="space-y-3">
-            <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide flex items-center gap-2">
-              <span className="text-green-500">🚀</span> Next Steps
+            <h3 className="text-sm font-bold text-gray-200 uppercase tracking-wide flex items-center gap-2">
+              <span className="text-solar-400">🚀</span> Next Steps
             </h3>
             <div className="grid grid-cols-1 gap-3">
               {summary.recommendations.map((rec, i) => (
-                <div key={i} className="flex items-start p-3 bg-green-50 rounded-lg border border-green-100">
-                  <span className="flex-shrink-0 w-6 h-6 bg-green-200 text-green-700 rounded-full flex items-center justify-center text-xs font-bold mr-3 mt-0.5">
+                <div key={i} className="flex items-start p-3 bg-solar-600/20 rounded-soft border border-solar-500/50">
+                  <span className="flex-shrink-0 w-6 h-6 bg-solar-500/30 text-solar-300 rounded-full flex items-center justify-center text-xs font-bold mr-3 mt-0.5">
                     {i + 1}
                   </span>
-                  <span className="text-gray-700 text-sm">{rec}</span>
+                  <span className="text-gray-300 text-sm">{rec}</span>
                 </div>
               ))}
             </div>
@@ -106,10 +107,10 @@ export default function WeeklySummary() {
         )}
       </div>      
       {(summary.weekOverWeekChange !== undefined) && (
-        <div className="px-6 py-3 bg-gray-50 border-t border-gray-100 flex justify-between items-center text-sm">
-          <span className="text-gray-500">vs Last Week</span>
+        <div className="px-6 py-3 bg-dark-300/50 border-t border-dark-400/50 flex justify-between items-center text-sm">
+          <span className="text-gray-400">vs Last Week</span>
           <span className={`font-semibold ${
-            summary.weekOverWeekChange >= 0 ? 'text-green-600' : 'text-red-600'
+            summary.weekOverWeekChange >= 0 ? 'text-solar-400' : 'text-terracotta-400'
           }`}>
             {summary.weekOverWeekChange > 0 && '+'}{summary.weekOverWeekChange}%
           </span>

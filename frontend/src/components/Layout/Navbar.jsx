@@ -6,6 +6,7 @@
 
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { MoonIcon } from '../Common/Icons'
 
 export default function Navbar() {
   const { user, logout } = useAuth()
@@ -17,13 +18,13 @@ export default function Navbar() {
   }
   
   return (
-    <nav className="bg-white shadow z-50 relative">
-      <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center h-16">
+    <nav className="bg-dark-100/90 backdrop-blur-md shadow-soft border-b border-dark-400/50 z-50 relative">
+      <div className="container mx-auto px-4 lg:px-6">
+        <div className="flex justify-between items-center h-16 lg:h-18">
           <Link to="/" className="flex items-center gap-2 group">
-            <span className="text-2xl group-hover:scale-110 transition-transform">🎯</span>
-            <span className="text-xl font-bold text-gray-900">
-              Habit<span className="text-blue-600">Tracker</span>
+            <MoonIcon className="w-6 h-6 text-accent-400 group-hover:text-accent-300 transition-colors duration-300" />
+            <span className="text-xl font-bold text-gradient-martian">
+              Habit<span className="text-accent-400">Tracker</span>
             </span>
           </Link>          
           <div className="flex items-center space-x-6">
@@ -31,42 +32,42 @@ export default function Navbar() {
               <>
                 {/* desktop nav links - Hidden on mobile if i would add mobile menu later */}
                 <div className="hidden md:flex items-center space-x-6 mr-4">
-                  <Link to="/" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">
+                  <Link to="/" className="text-gray-300 hover:text-white font-medium transition-colors duration-200">
                     Dashboard
                   </Link>
-                  <Link to="/habits" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">
+                  <Link to="/habits" className="text-gray-300 hover:text-white font-medium transition-colors duration-200">
                     Habits
                   </Link>
-                  <Link to="/analytics" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">
+                  <Link to="/analytics" className="text-gray-300 hover:text-white font-medium transition-colors duration-200">
                     Analytics
                   </Link>
-                  <Link to="/parties" className="text-gray-600 hover:text-blue-600 font-medium transition-colors">
+                  <Link to="/parties" className="text-gray-300 hover:text-white font-medium transition-colors duration-200">
                     Parties
                   </Link>
                 </div>
                 
                 {/* User Menu */}
-                <div className="flex items-center space-x-4 pl-4 border-l border-gray-200">
+                <div className="flex items-center space-x-4 pl-4 border-l border-dark-400">
                   <div className="flex items-center space-x-2">
                     {user.avatar_url ? (
                       <img 
                         src={user.avatar_url} 
                         alt={user.username} 
-                        className="w-8 h-8 rounded-full border border-gray-200"
+                        className="w-8 h-8 rounded-full border border-dark-500 shadow-soft"
                       />
                     ) : (
-                      <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm">
+                      <div className="w-8 h-8 bg-gradient-to-br from-accent-500 to-accent-600 text-white rounded-full flex items-center justify-center font-bold text-sm shadow-soft">
                         {user.username?.charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <span className="text-gray-900 font-medium hidden sm:block">
+                    <span className="text-gray-200 font-semibold hidden sm:block">
                       {user.username}
                     </span>
                   </div>
                   
                   <button
                     onClick={handleLogout}
-                    className="text-sm text-gray-500 hover:text-red-600 font-medium transition-colors"
+                    className="text-sm text-gray-400 hover:text-gray-200 font-medium transition-colors duration-200"
                   >
                     Logout
                   </button>
@@ -76,13 +77,13 @@ export default function Navbar() {
               <div className="flex items-center space-x-4">
                 <Link 
                   to="/login" 
-                  className="text-gray-600 hover:text-gray-900 font-medium"
+                  className="text-gray-300 hover:text-white font-medium transition-colors duration-200"
                 >
                   Login
                 </Link>
                 <Link
                   to="/register"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition-colors shadow-sm"
+                  className="btn-primary text-sm px-4 py-2"
                 >
                   Sign Up
                 </Link>

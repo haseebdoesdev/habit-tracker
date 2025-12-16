@@ -8,15 +8,18 @@ import LoadingSpinner from './LoadingSpinner'
 
 export default function LoadingState({ message = 'Loading...', fullPage = false }) {
   const containerClass = fullPage 
-    ? 'flex items-center justify-center h-64' 
-    : 'text-center py-8'
+    ? 'flex items-center justify-center min-h-[60vh]' 
+    : 'text-center py-12'
   
   return (
     <div className={containerClass}>
-      <LoadingSpinner size="md" message={message} />
+      <LoadingSpinner size="lg" message={message} />
     </div>
   )
 }
+
+
+
 
 
 

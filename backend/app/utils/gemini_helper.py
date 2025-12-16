@@ -34,9 +34,9 @@ class GeminiHelper:
         self.model = None
         try:
             # Create the generative model instance
-            # using 'gemini-pro' for text-only tasks
+            # using 'gemini-3-pro-preview' for text-only tasks
             # WHY: Need model to make API calls
-            self.model = genai.GenerativeModel('gemini-2.5-flash')
+            self.model = genai.GenerativeModel('gemini-3-pro-preview')
         except Exception as e:
             logger.error(f"Failed to initialize Gemini model: {e}")
     
@@ -191,80 +191,6 @@ class GeminiHelper:
         except Exception as e:
             logger.error(f"Failed to analyze patterns: {e}")
             return {"patterns": ["Tracking consistently helps reveal patterns.", "Keep logging to see more insights."]}
-    
-    async def analyze_mood_from_notes(self, 
-                                      notes: str, 
-                                      log_date: str, 
-                                      habit_title: str) -> dict:
-        """
-        Analyze mood from journal notes using Gemini.
-        Returns mood label, intensity, sentiment, and keywords.
-        """
-        if not notes or len(notes.strip()) < 10:
-            return {
-                "mood_label": "Neutral",
-                "mood_intensity": 0.5,
-                "sentiment": "neutral",
-                "keywords": []
-            }
-        
-        prompt = f"""
-        Analyze this journal entry from a habit tracker:
-        Date: {log_date}
-        Habit: {habit_title}
-        Notes: "{notes}"
-
-        Identify:
-        1. Primary mood (one word from: Happy, Stressed, Motivated, Tired, Anxious, Calm, Excited, Frustrated, Content, Energetic, Relaxed, Overwhelmed)
-        2. Mood intensity (0.0-1.0, where 1.0 is most intense)
-        3. Overall sentiment (positive/neutral/negative)
-        4. Key emotional keywords (2-3 words that capture the emotional tone)
-
-        Return JSON only:
-        {{
-          "mood_label": "...",
-          "mood_intensity": 0.75,
-          "sentiment": "positive",
-          "keywords": ["energized", "accomplished"]
-        }}
-        """
-        
-        try:
-            text = await self.generate_text(prompt)
-            clean_text = text.replace("```json", "").replace("```", "").strip()
-            result = json.loads(clean_text)
-            
-            # Validate and normalize
-            valid_moods = ["Happy", "Stressed", "Motivated", "Tired", "Anxious", "Calm", "Excited", "Frustrated", "Content", "Energetic", "Relaxed", "Overwhelmed", "Neutral"]
-            mood_label = result.get("mood_label", "Neutral")
-            if mood_label not in valid_moods:
-                mood_label = "Neutral"
-            
-            mood_intensity = float(result.get("mood_intensity", 0.5))
-            mood_intensity = max(0.0, min(1.0, mood_intensity))
-            
-            sentiment = result.get("sentiment", "neutral")
-            if sentiment not in ["positive", "neutral", "negative"]:
-                sentiment = "neutral"
-            
-            keywords = result.get("keywords", [])
-            if not isinstance(keywords, list):
-                keywords = []
-            
-            return {
-                "mood_label": mood_label,
-                "mood_intensity": mood_intensity,
-                "sentiment": sentiment,
-                "keywords": keywords[:3]  # Limit to 3 keywords
-            }
-        except Exception as e:
-            logger.error(f"Failed to analyze mood: {e}")
-            return {
-                "mood_label": "Neutral",
-                "mood_intensity": 0.5,
-                "sentiment": "neutral",
-                "keywords": []
-            }
     
     async def chat(self, 
                    message: str,

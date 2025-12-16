@@ -10,7 +10,7 @@ import api from './api'
 
 const habitService = {
   async getHabits(filters = {}) {
-    return api.get('/habits', { params: filters })
+    return api.get('/habits/', { params: filters })
       .then(response => response.data)
       .catch(error => {
         throw error
@@ -26,7 +26,7 @@ const habitService = {
   },
   
   async createHabit(habitData) {
-    return api.post('/habits', habitData)
+    return api.post('/habits/', habitData)
       .then(response => response.data)
       .catch(error => {
         throw error

@@ -210,6 +210,121 @@ async def get_weekly_summary(
     }
 
 
+@router.get("/mood-insights", response_model=MoodInsightsResponse)
+async def get_mood_insights(
+    start_date: Optional[date] = Query(None, description="Start date (defaults to 30 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get mood trends and AI-generated insights.
+    """
+    if end_date is None:
+        end_date = date.today()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+    
+    # Get logs with mood analysis
+    logs = db.query(Log).filter(
+        Log.user_id == current_user.id,
+        Log.log_date >= start_date,
+        Log.log_date <= end_date,
+        Log.mood_label.isnot(None),
+        Log.mood_intensity.isnot(None)
+    ).order_by(Log.log_date.asc()).all()
+    
+    # Build mood trend data
+    mood_trend = [
+        {
+            "date": str(log.log_date),
+            "mood_intensity": log.mood_intensity,
+            "mood_label": log.mood_label,
+            "sentiment": "positive" if log.mood_intensity > 0.6 else "negative" if log.mood_intensity < 0.4 else "neutral"
+        }
+        for log in logs
+    ]
+    
+    # Build weighted mood distribution
+    # Weight factors:
+    # 1. Recency: More recent logs have higher weight (exponential decay)
+    # 2. Intensity: Higher intensity moods have more weight
+    # 3. Frequency: Normalized by total count
+    
+    mood_distribution = {}
+    today = date.today()
+    total_weight = 0.0
+    
+    if logs:
+        for log in logs:
+            label = log.mood_label
+            if not label:  # Skip if no mood label
+                continue
+            
+            # Calculate recency weight (exponential decay - more recent = higher weight)
+            days_ago = (today - log.log_date).days
+            # Use exponential decay: weight = 1 / (1 + days_ago / decay_factor)
+            # decay_factor of 14 means weight halves every ~10 days
+            decay_factor = 14.0
+            recency_weight = 1.0 / (1.0 + (days_ago / decay_factor))
+            
+            # Intensity weight (mood_intensity is 0-1, use it directly)
+            intensity_weight = float(log.mood_intensity) if log.mood_intensity is not None else 0.5
+            
+            # Combined weight: recency * (0.6) + intensity * (0.4)
+            # Recent logs are more important, but intensity matters too
+            combined_weight = (recency_weight * 0.6) + (intensity_weight * 0.4)
+            
+            # Add weighted contribution
+            if label not in mood_distribution:
+                mood_distribution[label] = 0.0
+            mood_distribution[label] += combined_weight
+            total_weight += combined_weight
+        
+        # Keep weighted values (already calculated)
+        # Frontend will calculate percentages from these weighted values
+        if total_weight > 0 and mood_distribution:
+            # Round for cleaner display
+            mood_distribution = {label: round(weight, 3) for label, weight in mood_distribution.items()}
+    
+    # Generate AI insights
+    ai_insights = "Keep tracking your mood to see patterns over time."
+    if len(logs) >= 5:
+        # Prepare context for AI
+        recent_moods = [{"date": str(log.log_date), "mood": log.mood_label, "intensity": log.mood_intensity} for log in logs[-10:]]
+        context = {
+            "total_entries": len(logs),
+            "recent_moods": recent_moods,
+            "mood_distribution": mood_distribution,
+            "average_intensity": sum(log.mood_intensity for log in logs) / len(logs) if logs else 0.5
+        }
+        
+        try:
+            prompt = f"""
+            Analyze this mood tracking data from a habit tracker:
+            Total entries: {len(logs)}
+            Mood distribution: {mood_distribution}
+            Recent moods: {recent_moods[-5:]}
+            Average intensity: {context['average_intensity']:.2f}
+            
+            Provide a brief, encouraging insight (2-3 sentences) about the user's mood patterns.
+            Focus on positive observations and gentle suggestions if patterns are concerning.
+            """
+            ai_insights = await gemini.generate_text(prompt)
+        except Exception as e:
+            logger = logging.getLogger(__name__)
+            logger.error(f"Failed to generate mood insights: {e}")
+            ai_insights = "Keep tracking your mood to see patterns over time."
+    
+    return MoodInsightsResponse(
+        mood_trend=mood_trend,
+        mood_distribution=mood_distribution,
+        ai_insights=ai_insights,
+        period_start=start_date,
+        period_end=end_date
+    )
+
+
 @router.get("/{log_id}", response_model=LogResponse)
 async def get_log(
     log_id: int,
@@ -369,8 +484,9 @@ async def analyze_log_mood(
     habit = db.query(Habit).filter(Habit.id == log.habit_id).first()
     habit_title = habit.title if habit else "Habit"
     
-    # Analyze mood using Gemini
-    analysis = await gemini.analyze_mood_from_notes(
+    # Analyze mood using VADER Sentiment Analysis
+    from app.utils.sentiment_helper import sentiment_helper
+    analysis = sentiment_helper.analyze_mood_from_notes(
         notes=log.notes,
         log_date=str(log.log_date),
         habit_title=habit_title
@@ -389,83 +505,4 @@ async def analyze_log_mood(
         mood_intensity=analysis["mood_intensity"],
         sentiment=analysis["sentiment"],
         keywords=analysis["keywords"]
-    )
-
-
-@router.get("/mood-insights", response_model=MoodInsightsResponse)
-async def get_mood_insights(
-    start_date: Optional[date] = Query(None, description="Start date (defaults to 30 days ago)"),
-    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
-    current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
-):
-    """
-    Get mood trends and AI-generated insights.
-    """
-    if end_date is None:
-        end_date = date.today()
-    if start_date is None:
-        start_date = end_date - timedelta(days=30)
-    
-    # Get logs with mood analysis
-    logs = db.query(Log).filter(
-        Log.user_id == current_user.id,
-        Log.log_date >= start_date,
-        Log.log_date <= end_date,
-        Log.mood_label.isnot(None),
-        Log.mood_intensity.isnot(None)
-    ).order_by(Log.log_date.asc()).all()
-    
-    # Build mood trend data
-    mood_trend = [
-        {
-            "date": str(log.log_date),
-            "mood_intensity": log.mood_intensity,
-            "mood_label": log.mood_label,
-            "sentiment": "positive" if log.mood_intensity > 0.6 else "negative" if log.mood_intensity < 0.4 else "neutral"
-        }
-        for log in logs
-    ]
-    
-    # Build mood distribution
-    mood_distribution = {}
-    for log in logs:
-        label = log.mood_label
-        mood_distribution[label] = mood_distribution.get(label, 0) + 1
-    
-    # Generate AI insights
-    ai_insights = "Keep tracking your mood to see patterns over time."
-    if len(logs) >= 5:
-        # Prepare context for AI
-        recent_moods = [{"date": str(log.log_date), "mood": log.mood_label, "intensity": log.mood_intensity} for log in logs[-10:]]
-        context = {
-            "total_entries": len(logs),
-            "recent_moods": recent_moods,
-            "mood_distribution": mood_distribution,
-            "average_intensity": sum(log.mood_intensity for log in logs) / len(logs) if logs else 0.5
-        }
-        
-        try:
-            prompt = f"""
-            Analyze this mood tracking data from a habit tracker:
-            Total entries: {len(logs)}
-            Mood distribution: {mood_distribution}
-            Recent moods: {recent_moods[-5:]}
-            Average intensity: {context['average_intensity']:.2f}
-            
-            Provide a brief, encouraging insight (2-3 sentences) about the user's mood patterns.
-            Focus on positive observations and gentle suggestions if patterns are concerning.
-            """
-            ai_insights = await gemini.generate_text(prompt)
-        except Exception as e:
-            logger = logging.getLogger(__name__)
-            logger.error(f"Failed to generate mood insights: {e}")
-            ai_insights = "Keep tracking your mood to see patterns over time."
-    
-    return MoodInsightsResponse(
-        mood_trend=mood_trend,
-        mood_distribution=mood_distribution,
-        ai_insights=ai_insights,
-        period_start=start_date,
-        period_end=end_date
     )
