@@ -13,6 +13,26 @@ from typing import Optional
 from datetime import datetime, time, timedelta
 from pydantic import BaseModel
 import secrets
+import logging
+
+# Try to import zoneinfo (Python 3.9+), fallback to pytz
+try:
+    from zoneinfo import ZoneInfo
+    USE_ZONEINFO = True
+    pytz = None
+except ImportError:
+    try:
+        from backports.zoneinfo import ZoneInfo
+        USE_ZONEINFO = True
+        pytz = None
+    except ImportError:
+        # Fallback to pytz if zoneinfo not available
+        try:
+            import pytz
+            USE_ZONEINFO = False
+        except ImportError:
+            USE_ZONEINFO = None
+            pytz = None
 
 from app.database import get_db
 from app.middleware.auth import get_current_active_user
@@ -33,6 +53,8 @@ router = APIRouter(
     prefix="/calendar",
     tags=["Calendar Integration"]
 )
+
+logger = logging.getLogger(__name__)
 
 # In-memory storage for OAuth states (in production, use Redis or database)
 oauth_states = {}
@@ -196,18 +218,71 @@ async def sync_to_calendar(
     synced = []
     errors = []
     
+    # Get user timezone or default to UTC
+    user_timezone = current_user.timezone or "UTC"
+    logger.info(f"Syncing habits for user {current_user.id} with timezone {user_timezone}")
+    
+    logger.info(f"Found {len(habits)} active habits for user {current_user.id}")
+    
     for habit in habits:
         try:
-            if habit.reminder_time:
-                # Parse reminder time
-                hour, minute = map(int, habit.reminder_time.split(':'))
-                start_time = datetime.utcnow().replace(hour=hour, minute=minute, second=0)
+            # Check if reminder_time exists and is not empty
+            reminder_time = habit.reminder_time
+            if reminder_time and reminder_time.strip():
+                logger.info(f"Processing habit {habit.id}: {habit.title} with reminder_time {reminder_time}")
+                
+                # Parse reminder time (HH:MM format)
+                try:
+                    hour, minute = map(int, reminder_time.split(':'))
+                    if not (0 <= hour <= 23 and 0 <= minute <= 59):
+                        raise ValueError("Hour must be 0-23, minute must be 0-59")
+                except ValueError as e:
+                    logger.error(f"Invalid reminder_time format for habit {habit.id}: {reminder_time} - {str(e)}")
+                    errors.append({
+                        "habit_id": habit.id,
+                        "habit_title": habit.title,
+                        "error": f"Invalid reminder time format: {reminder_time}. Expected HH:MM (e.g., 09:00)"
+                    })
+                    continue
+                
+                # Create start time in user's timezone
+                # Get today's date in the user's timezone
+                try:
+                    if USE_ZONEINFO:
+                        tz = ZoneInfo(user_timezone)
+                        now_in_tz = datetime.now(tz)
+                        start_time = now_in_tz.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                    elif USE_ZONEINFO is False:
+                        # Using pytz
+                        tz = pytz.timezone(user_timezone)
+                        now_in_tz = datetime.now(tz)
+                        start_time = now_in_tz.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                    else:
+                        # No timezone library available, use UTC
+                        logger.warning("No timezone library available, using UTC")
+                        now_in_tz = datetime.utcnow()
+                        start_time = now_in_tz.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                        user_timezone = "UTC"
+                except Exception as tz_error:
+                    logger.warning(f"Invalid timezone {user_timezone}, using UTC: {tz_error}")
+                    now_in_tz = datetime.utcnow()
+                    start_time = now_in_tz.replace(hour=hour, minute=minute, second=0, microsecond=0)
+                    user_timezone = "UTC"
+                
+                # If the time has already passed today, start from tomorrow
+                if start_time < now_in_tz:
+                    start_time = start_time + timedelta(days=1)
+                
+                logger.info(f"Creating event for habit {habit.id} at {start_time} ({user_timezone})")
                 
                 # Determine recurrence
                 recurrence = daily_recurrence()
-                if habit.frequency and habit.frequency.value == "WEEKLY" and habit.target_days:
-                    days = habit.target_days.split(',')
-                    recurrence = weekly_recurrence(days)
+                if habit.frequency:
+                    freq_value = habit.frequency.value if hasattr(habit.frequency, 'value') else str(habit.frequency)
+                    if freq_value == "WEEKLY" and habit.target_days:
+                        days = [d.strip() for d in habit.target_days.split(',')]
+                        recurrence = weekly_recurrence(days)
+                        logger.info(f"Using weekly recurrence with days: {days}")
                 
                 # Create event
                 event = await calendar_helper.create_event(
@@ -217,23 +292,37 @@ async def sync_to_calendar(
                     start_time=start_time,
                     recurrence=recurrence,
                     reminder_minutes=15,
-                    timezone=current_user.timezone or "UTC"
+                    timezone=user_timezone
                 )
                 
+                logger.info(f"Successfully created calendar event {event.get('id')} for habit {habit.id}")
                 synced.append({
                     "habit_id": habit.id,
                     "habit_title": habit.title,
-                    "event_id": event.get("id")
+                    "event_id": event.get("id"),
+                    "event_link": event.get("html_link")
                 })
+            else:
+                logger.debug(f"Skipping habit {habit.id}: {habit.title} - no reminder_time set (value: {repr(habit.reminder_time)})")
         except Exception as e:
+            logger.error(f"Error syncing habit {habit.id} ({habit.title}): {str(e)}", exc_info=True)
             errors.append({
                 "habit_id": habit.id,
                 "habit_title": habit.title,
                 "error": str(e)
             })
     
+    total_habits = len(habits)
+    habits_with_reminders = len([h for h in habits if h.reminder_time])
+    
+    logger.info(f"Sync complete: {len(synced)} synced, {len(errors)} errors out of {habits_with_reminders} habits with reminders")
+    
     return {
-        "message": f"Synced {len(synced)} habits to Google Calendar",
+        "message": f"Synced {len(synced)} out of {habits_with_reminders} habits to Google Calendar",
+        "total_habits": total_habits,
+        "habits_with_reminders": habits_with_reminders,
+        "synced_count": len(synced),
+        "error_count": len(errors),
         "synced": synced,
         "errors": errors
     }

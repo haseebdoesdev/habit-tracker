@@ -26,7 +26,23 @@ const habitService = {
   },
   
   async createHabit(habitData) {
-    return api.post('/habits/', habitData)
+    // Convert camelCase to snake_case for backend compatibility
+    // Also convert empty strings to null for optional fields
+    const reminderTime = habitData.reminderTime || habitData.reminder_time
+    const requestData = {
+      ...habitData,
+      reminder_time: reminderTime && reminderTime.trim() ? reminderTime.trim() : null,
+      target_days: (habitData.targetDays || habitData.target_days) || null,
+      party_id: (habitData.partyId || habitData.party_id) || null,
+      is_active: habitData.isActive !== undefined ? habitData.isActive : (habitData.is_active !== undefined ? habitData.is_active : true)
+    }
+    // Remove camelCase versions
+    delete requestData.reminderTime
+    delete requestData.targetDays
+    delete requestData.partyId
+    delete requestData.isActive
+    
+    return api.post('/habits/', requestData)
       .then(response => response.data)
       .catch(error => {
         throw error
@@ -34,7 +50,23 @@ const habitService = {
   },
   
   async updateHabit(habitId, habitData) {
-    return api.put(`/habits/${habitId}`, habitData)
+    // Convert camelCase to snake_case for backend compatibility
+    // Also convert empty strings to null for optional fields
+    const reminderTime = habitData.reminderTime !== undefined ? habitData.reminderTime : habitData.reminder_time
+    const requestData = {
+      ...habitData,
+      reminder_time: reminderTime !== undefined ? (reminderTime && reminderTime.trim() ? reminderTime.trim() : null) : undefined,
+      target_days: habitData.targetDays !== undefined ? habitData.targetDays : habitData.target_days,
+      party_id: habitData.partyId !== undefined ? habitData.partyId : habitData.party_id,
+      is_active: habitData.isActive !== undefined ? habitData.isActive : habitData.is_active
+    }
+    // Remove camelCase versions
+    delete requestData.reminderTime
+    delete requestData.targetDays
+    delete requestData.partyId
+    delete requestData.isActive
+    
+    return api.put(`/habits/${habitId}`, requestData)
       .then(response => response.data)
       .catch(error => {
         throw error

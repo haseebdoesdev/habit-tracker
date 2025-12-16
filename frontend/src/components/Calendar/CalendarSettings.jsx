@@ -69,10 +69,36 @@ export default function CalendarSettings() {
     try {
       setIsSyncing(true)
       setError('')
-      await calendarService.syncHabits()
-      alert('Habits synced to Google Calendar successfully!')
+      setSuccess('')
+      const result = await calendarService.syncHabits()
+      
+      // Build detailed success message
+      let message = result.message || `Synced ${result.synced_count || 0} habits to Google Calendar`
+      
+      if (result.errors && result.errors.length > 0) {
+        message += `\n\nErrors (${result.error_count}):`
+        result.errors.forEach(err => {
+          message += `\n• ${err.habit_title}: ${err.error}`
+        })
+      }
+      
+      if (result.synced && result.synced.length > 0) {
+        message += `\n\nSuccessfully synced:`
+        result.synced.forEach(item => {
+          message += `\n• ${item.habit_title}`
+        })
+      }
+      
+      if (result.habits_with_reminders === 0) {
+        message = 'No habits with reminder times found. Please add reminder times to your habits first.'
+        setError(message)
+      } else {
+        setSuccess(message)
+      }
     } catch (err) {
-      setError(err.message || 'Failed to sync habits')
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to sync habits'
+      setError(errorMessage)
+      console.error('Sync error:', err)
     } finally {
       setIsSyncing(false)
     }
@@ -102,7 +128,7 @@ export default function CalendarSettings() {
       )}
 
       {success && (
-        <div className="bg-solar-600/20 border border-solar-500/50 text-solar-300 p-4 rounded-organic">
+        <div className="bg-solar-600/20 border border-solar-500/50 text-solar-300 p-4 rounded-organic whitespace-pre-line">
           {success}
         </div>
       )}
@@ -178,5 +204,6 @@ export default function CalendarSettings() {
     </div>
   )
 }
+
 
 

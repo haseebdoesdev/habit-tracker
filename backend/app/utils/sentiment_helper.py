@@ -166,3 +166,4 @@ class SentimentHelper:
 # Create a singleton instance
 sentiment_helper = SentimentHelper()
 
+

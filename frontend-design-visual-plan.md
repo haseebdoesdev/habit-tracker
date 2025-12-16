@@ -583,3 +583,4 @@ Every screen from the UX plan has corresponding design guidance that describes h
 
 The design should feel like a supportive companion that encourages growth through gentle guidance, not aggressive demands. It should feel like a natural space for reflection and progress, not a mechanical system for tracking and evaluation. It should feel crafted by humans for humans, embodying solarpunk ideals of harmony between technology and nature, community over competition, and optimism grounded in action.
 
+
