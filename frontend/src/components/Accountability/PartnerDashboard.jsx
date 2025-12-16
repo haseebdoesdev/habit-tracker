@@ -68,7 +68,7 @@ export default function PartnerDashboard() {
   }, [selectedPartner, user])
   
   if (isLoading) {
-    return <div className="text-center py-12 text-gray-500">Loading partners...</div>
+    return <LoadingState message="Loading partners..." fullPage />
   }
   
   return (
@@ -138,7 +138,7 @@ export default function PartnerDashboard() {
           <div className="md:col-span-8 lg:col-span-9">
             {loadingHabits ? (
               <div className="bg-white h-64 rounded-xl shadow-sm border border-gray-100 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <LoadingSpinner size="md" message="Loading habits..." />
               </div>
             ) : partnerData ? (
               <div className="space-y-6">

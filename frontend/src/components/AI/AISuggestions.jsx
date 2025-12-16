@@ -6,6 +6,7 @@
 
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import LoadingSpinner from '../Common/LoadingSpinner'
 import aiService from '../../services/aiService' // Assuming this service exists
 import habitService from '../../services/habitService'
 
@@ -105,8 +106,7 @@ export default function AISuggestions() {
       )}      
       {isLoading && (
         <div className="text-center py-12 bg-white rounded-xl border border-gray-100 border-dashed">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-blue-600 border-t-transparent mb-3"></div>
-          <p className="text-gray-500">Asking AI for {category || 'new'} habit ideas...</p>
+          <LoadingSpinner size="md" message={`Asking AI for ${category || 'new'} habit ideas...`} />
         </div>
       )}      
       {!isLoading && suggestions.length === 0 && !error && (

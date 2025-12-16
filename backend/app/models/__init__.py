@@ -17,3 +17,4 @@ from app.models.achievement import Achievement
 from app.models.party import Party
 from app.models.party_member import PartyMember
 from app.models.party_goal import PartyGoal
+from app.models.comment import Comment

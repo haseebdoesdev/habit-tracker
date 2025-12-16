@@ -21,10 +21,6 @@ function toDate(date) {
 
 /**
  * Format a date for display
- * 
- * TODO: Implement date formatting
- * WHY: Consistent date display across app
- * APPROACH: Use Intl.DateTimeFormat or format manually
  */
 export function formatDate(date, format = 'short') {
   const dateObj = toDate(date)
@@ -51,9 +47,6 @@ export function formatDate(date, format = 'short') {
 
 /**
  * Format a time for display
- * 
- * TODO: Implement time formatting
- * WHY: Show times in user-friendly format
  */
 export function formatTime(date) {
   const dateObj = toDate(date)
@@ -66,9 +59,6 @@ export function formatTime(date) {
 
 /**
  * Get relative time (e.g., "2 hours ago")
- * 
- * TODO: Implement relative time
- * WHY: More intuitive for recent dates
  */
 export function getRelativeTime(date) {
   const dateObj = toDate(date)
@@ -115,9 +105,6 @@ export function getRelativeTime(date) {
 
 /**
  * Check if date is today
- * 
- * TODO: Implement today check
- * WHY: Common condition for habit tracking
  */
 export function isToday(date) {
   const dateObj = toDate(date)
@@ -127,9 +114,6 @@ export function isToday(date) {
 
 /**
  * Check if date is yesterday
- * 
- * TODO: Implement yesterday check
- * WHY: Streak calculations
  */
 export function isYesterday(date) {
   const dateObj = toDate(date)
@@ -140,9 +124,6 @@ export function isYesterday(date) {
 
 /**
  * Get start of week
- * 
- * TODO: Implement week start
- * WHY: Weekly analytics
  */
 export function getStartOfWeek(date = new Date()) {
   const dateObj = toDate(date)
@@ -172,9 +153,6 @@ export function getEndOfWeek(date = new Date()) {
 
 /**
  * Get date range for last N days
- * 
- * TODO: Implement date range
- * WHY: Charts and analytics
  */
 export function getLastNDays(n) {
   const dates = []
@@ -206,9 +184,6 @@ export function toAPIDate(date) {
 
 /**
  * Parse date from API
- * 
- * TODO: Implement API date parsing
- * WHY: Convert API dates to Date objects
  */
 export function fromAPIDate(dateString) {
   // Handle both date-only strings (YYYY-MM-DD) and ISO datetime strings
@@ -224,9 +199,6 @@ export function fromAPIDate(dateString) {
 
 /**
  * Get day of week name
- * 
- * TODO: Implement day name
- * WHY: Display in UI
  */
 export function getDayName(date, format = 'long') {
   const dateObj = toDate(date)
@@ -240,9 +212,6 @@ export function getDayName(date, format = 'long') {
 
 /**
  * Check if two dates are the same day
- * 
- * TODO: Implement same day check
- * WHY: Date comparisons
  */
 export function isSameDay(date1, date2) {
   const d1 = toDate(date1)

@@ -7,11 +7,12 @@
  */
 
 import { useState } from 'react'
-// TODO: Import useNavigate from react-router-dom
-// TODO: Import partyService
+import { useNavigate } from 'react-router-dom'
+import partyService from '../../services/partyService'
 
 export default function CreateParty() {
-  // TODO: Set up form state
+  const navigate = useNavigate()
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -23,28 +24,34 @@ export default function CreateParty() {
   const [error, setError] = useState('')
   
   const handleChange = (e) => {
-    // TODO: Update form data
-    // WHY: Track input changes
     const value = e.target.type === 'checkbox' ? e.target.checked : e.target.value
-    // setFormData({ ...formData, [e.target.name]: value })
+    setFormData({ ...formData, [e.target.name]: value })
   }
   
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setError('')
     
-    // TODO: Validate form
-    // WHY: Ensure required fields
+    if (!formData.name.trim()) {
+      setError('Party name is required')
+      return
+    }
     
-    // TODO: Call API to create party
-    // WHY: Persist to backend
-    // APPROACH: await partyService.createParty(formData)
+    setIsLoading(true)
     
-    // TODO: Navigate to new party
-    // WHY: Show the created party
-    // APPROACH: navigate(`/parties/${newParty.id}`)
-    
-    // TODO: Handle errors
-    // WHY: Show validation errors
+    try {
+      const result = await partyService.createParty({
+        name: formData.name,
+        description: formData.description,
+        is_public: formData.isPublic,
+        max_members: parseInt(formData.maxMembers)
+      })
+      navigate(`/parties/${result.id || result.party?.id}`)
+    } catch (err) {
+      setError(err.message || 'Failed to create party')
+    } finally {
+      setIsLoading(false)
+    }
   }
   
   return (
@@ -56,7 +63,6 @@ export default function CreateParty() {
       )}
       
       <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-6 space-y-6">
-        {/* Party name */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Party Name *
@@ -64,30 +70,35 @@ export default function CreateParty() {
           <input
             name="name"
             type="text"
+            value={formData.name}
+            onChange={handleChange}
             placeholder="Enter party name"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            required
           />
         </div>
         
-        {/* Description */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Description
           </label>
           <textarea
             name="description"
+            value={formData.description}
+            onChange={handleChange}
             rows={3}
             placeholder="What's your party about?"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
           />
         </div>
         
-        {/* Public toggle */}
         <div className="flex items-center space-x-3">
           <input
             type="checkbox"
             name="isPublic"
             id="isPublic"
+            checked={formData.isPublic}
+            onChange={handleChange}
             className="w-4 h-4 text-blue-600 rounded"
           />
           <label htmlFor="isPublic" className="text-gray-700">
@@ -95,7 +106,6 @@ export default function CreateParty() {
           </label>
         </div>
         
-        {/* Max members */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Maximum Members
@@ -105,7 +115,8 @@ export default function CreateParty() {
             type="number"
             min="2"
             max="100"
-            defaultValue={20}
+            value={formData.maxMembers}
+            onChange={handleChange}
             className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
           />
         </div>

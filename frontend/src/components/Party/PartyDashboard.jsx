@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
+import LoadingState from '../Common/LoadingState'
 import partyService from '../../services/partyService'
 import PartyMembers from './PartyMembers'
 import PartyGoals from './PartyGoals'
@@ -37,7 +38,7 @@ export default function PartyDashboard() {
   }, [id])
 
   if (isLoading) {
-    return <div className="text-center py-8">Loading party...</div>
+    return <LoadingState message="Loading party..." fullPage />
   }
 
   if (error) {

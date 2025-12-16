@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import LoadingSpinner from '../Common/LoadingSpinner'
 import accountabilityService from '../../services/accountabilityService'
 
 export default function PartnerComments({ habitId }) {
@@ -62,7 +63,7 @@ export default function PartnerComments({ habitId }) {
       {/* Comments list */}
       <div className="space-y-3 max-h-64 overflow-y-auto">
         {isLoading ? (
-          <p className="text-gray-500">Loading comments...</p>
+          <LoadingSpinner size="sm" message="Loading comments..." />
         ) : comments.length === 0 ? (
           <p className="text-gray-500">No comments yet. Be the first!</p>
         ) : (

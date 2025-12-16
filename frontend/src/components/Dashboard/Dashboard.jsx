@@ -8,6 +8,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import HabitCard from './HabitCard'
 import StreakDisplay from './StreakDisplay'
+import LoadingState from '../Common/LoadingState'
 import habitService from '../../services/habitService'
 import api from '../../services/api'
 import { useAuth } from '../../context/AuthContext'
@@ -102,11 +103,7 @@ export default function Dashboard() {
   }
   
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    )
+    return <LoadingState message="Loading dashboard..." fullPage />
   }
   
   const streakData = {

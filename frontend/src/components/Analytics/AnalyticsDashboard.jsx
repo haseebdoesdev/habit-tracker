@@ -5,8 +5,10 @@
 
 import { useState, useEffect } from 'react'
 import api from '../../services/api'
+import LoadingState from '../Common/LoadingState'
 import HeatmapCalendar from './HeatmapCalendar'
 import ProgressChart from './ProgressChart'
+import MoodInsights from '../Mood/MoodInsights'
 
 export default function AnalyticsDashboard() {
   const [overview, setOverview] = useState(null)
@@ -73,7 +75,7 @@ export default function AnalyticsDashboard() {
   }, [period])
 
   if (isLoading) {
-    return <div className="text-center py-8">Loading analytics...</div>
+    return <LoadingState message="Loading analytics..." fullPage />
   }
 
   return (
@@ -165,6 +167,9 @@ export default function AnalyticsDashboard() {
           )}
         </div>
       </div>
+
+      {/* Mood Insights */}
+      <MoodInsights />
     </div>
   )
 }

@@ -7,13 +7,14 @@
  */
 
 import { useState } from 'react'
-// TODO: Import useNavigate, useParams from react-router-dom
-// TODO: Import partyGoalService
+import { useNavigate, useParams } from 'react-router-dom'
+import partyGoalService from '../../services/partyGoalService'
+import { validateRequired, validatePositiveNumber, validateDateRange } from '../../utils/validators'
 
 export default function CreatePartyGoal() {
-  // TODO: Get party ID from params or props
+  const { id: partyId } = useParams()
+  const navigate = useNavigate()
   
-  // TODO: Set up form state
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -27,28 +28,52 @@ export default function CreatePartyGoal() {
   const [error, setError] = useState('')
   
   const handleChange = (e) => {
-    // TODO: Update form data
+    setFormData({ ...formData, [e.target.name]: e.target.value })
   }
   
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setError('')
     
-    // TODO: Validate form
-    // WHY: Ensure valid data
-    // Check: title, targetValue, dates
+    // Validate required fields
+    const titleValidation = validateRequired(formData.title, 'Title')
+    if (!titleValidation.valid) {
+      setError(titleValidation.message)
+      return
+    }
     
-    // TODO: Validate dates
-    // WHY: End date must be after start date
+    const targetValidation = validatePositiveNumber(formData.targetValue, 'Target value')
+    if (!targetValidation.valid) {
+      setError(targetValidation.message)
+      return
+    }
     
-    // TODO: Call API to create goal
-    // WHY: Persist goal to backend
-    // APPROACH: await partyGoalService.createGoal(partyId, formData)
+    // Validate dates if provided
+    if (formData.startDate && formData.endDate) {
+      const dateValidation = validateDateRange(formData.startDate, formData.endDate)
+      if (!dateValidation.valid) {
+        setError(dateValidation.message)
+        return
+      }
+    }
     
-    // TODO: Navigate back to party
-    // WHY: Show the new goal
+    setIsLoading(true)
     
-    // TODO: Handle errors
-    // WHY: Show error message
+    try {
+      await partyGoalService.createGoal(partyId, {
+        title: formData.title,
+        description: formData.description || null,
+        targetValue: parseInt(formData.targetValue),
+        startDate: formData.startDate || null,
+        endDate: formData.endDate || null,
+        rewardPoints: parseInt(formData.rewardPoints) || 0
+      })
+      navigate(`/parties/${partyId}`)
+    } catch (err) {
+      setError(err.message || 'Failed to create goal')
+    } finally {
+      setIsLoading(false)
+    }
   }
   
   return (
@@ -60,7 +85,6 @@ export default function CreatePartyGoal() {
       )}
       
       <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-6 space-y-6">
-        {/* Title */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Goal Title *
@@ -68,25 +92,28 @@ export default function CreatePartyGoal() {
           <input
             name="title"
             type="text"
+            value={formData.title}
+            onChange={handleChange}
             placeholder="e.g., Complete 500 habits together"
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            required
           />
         </div>
         
-        {/* Description */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Description
           </label>
           <textarea
             name="description"
+            value={formData.description}
+            onChange={handleChange}
             rows={3}
             placeholder="Describe the goal..."
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
           />
         </div>
         
-        {/* Target value */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Target Value *
@@ -95,38 +122,43 @@ export default function CreatePartyGoal() {
             name="targetValue"
             type="number"
             min="1"
+            value={formData.targetValue}
+            onChange={handleChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            required
           />
           <p className="text-sm text-gray-500 mt-1">
             Total completions needed to achieve the goal
           </p>
         </div>
         
-        {/* Date range */}
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Start Date *
+              Start Date
             </label>
             <input
               name="startDate"
               type="date"
+              value={formData.startDate}
+              onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              End Date *
+              End Date
             </label>
             <input
               name="endDate"
               type="date"
+              value={formData.endDate}
+              onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
         
-        {/* Reward points */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Reward Points
@@ -135,6 +167,8 @@ export default function CreatePartyGoal() {
             name="rewardPoints"
             type="number"
             min="0"
+            value={formData.rewardPoints}
+            onChange={handleChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
           />
           <p className="text-sm text-gray-500 mt-1">

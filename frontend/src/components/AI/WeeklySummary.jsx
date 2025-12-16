@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import LoadingSpinner from '../Common/LoadingSpinner'
 import aiService from '../../services/aiService'
 
 export default function WeeklySummary() {
@@ -32,15 +33,7 @@ export default function WeeklySummary() {
   if (isLoading) {
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
-          <div className="h-6 bg-gray-200 rounded w-1/3 animate-pulse"></div>
-        </div>
-        <div className="space-y-3">
-          <div className="h-4 bg-gray-200 rounded w-full animate-pulse"></div>
-          <div className="h-4 bg-gray-200 rounded w-5/6 animate-pulse"></div>
-          <div className="h-4 bg-gray-200 rounded w-4/6 animate-pulse"></div>
-        </div>
+        <LoadingSpinner size="md" message="Loading summary..." />
       </div>
     )
   }

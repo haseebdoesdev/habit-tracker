@@ -5,6 +5,7 @@
 
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
+import LoadingSpinner from './components/Common/LoadingSpinner'
 
 // Layout components
 import Navbar from './components/Layout/Navbar'
@@ -32,6 +33,7 @@ import AISuggestions from './components/AI/AISuggestions'
 import PartyList from './components/Party/PartyList'
 import CreateParty from './components/Party/CreateParty'
 import PartyDashboard from './components/Party/PartyDashboard'
+import CreatePartyGoal from './components/Party/CreatePartyGoal'
 import PartnerDashboard from './components/Accountability/PartnerDashboard'
 
 function App() {
@@ -41,10 +43,7 @@ function App() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
+        <LoadingSpinner size="lg" message="Loading..." />
       </div>
     )
   }
@@ -72,6 +71,7 @@ function App() {
             <Route path="/parties" element={<ProtectedRoute><PartyList /></ProtectedRoute>} />
             <Route path="/parties/new" element={<ProtectedRoute><CreateParty /></ProtectedRoute>} />
             <Route path="/parties/:id" element={<ProtectedRoute><PartyDashboard /></ProtectedRoute>} />
+            <Route path="/parties/:id/goals/new" element={<ProtectedRoute><CreatePartyGoal /></ProtectedRoute>} />
             <Route path="/accountability" element={<ProtectedRoute><PartnerDashboard /></ProtectedRoute>} />
 
             {/* Catch all - redirect to dashboard or login */}

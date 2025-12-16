@@ -11,13 +11,10 @@ from fastapi import HTTPException, status
 from typing import Optional
 from datetime import date, datetime, timedelta
 
-# TODO: Import models (User, Habit, Log)
 from app.models.achievement import Achievement
-# WHY: Need to query habit and log data
 from app.models.user import User
 from app.models.habit import Habit
 from app.models.log import Log
-# TODO: Import schemas for analytics responses
 
 
 async def get_overview_stats(current_user, db: Session):

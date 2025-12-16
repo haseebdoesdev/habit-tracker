@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect } from 'react'
+import LoadingState from '../Common/LoadingState'
 import partyService from '../../services/partyService'
 
 export default function PartyMembers({ partyId }) {
@@ -32,7 +33,7 @@ export default function PartyMembers({ partyId }) {
   }, [partyId])
   
   if (isLoading) {
-    return <div className="text-center py-4">Loading members...</div>
+    return <LoadingState message="Loading members..." />
   }
   
   return (

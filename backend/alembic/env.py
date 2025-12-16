@@ -16,9 +16,18 @@ import sys
 # Add the parent directory to path so we can import our app
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# TODO: Import your Base model and all models here
-# WHY: Alembic needs to know about all your models to detect schema changes
-# APPROACH: Import the Base class from your database module and all model files
+# Import Base and all models for Alembic migration detection
+from app.database import Base
+from app.models import (
+    User,
+    Habit,
+    Log,
+    Achievement,
+    Party,
+    PartyMember,
+    PartyGoal,
+    AccountabilityPartnership
+)
 
 # This is the Alembic Config object
 config = context.config
@@ -27,15 +36,13 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# TODO: Set target_metadata to your Base.metadata
-# WHY: This tells Alembic what your desired database schema looks like
-# APPROACH: After importing Base, assign Base.metadata to target_metadata
-target_metadata = None
+# Set target_metadata to Base.metadata
+target_metadata = Base.metadata
 
-# TODO: Override sqlalchemy.url with your DATABASE_URL from environment
-# WHY: Keeps database credentials out of alembic.ini and in your .env file
-# APPROACH: Read DATABASE_URL from environment and set it in the config
-# SECURITY: Never hardcode database credentials
+# Override sqlalchemy.url with DATABASE_URL from environment
+from app.config import settings
+if settings.DATABASE_URL:
+    config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)
 
 
 def run_migrations_offline() -> None:
@@ -45,10 +52,6 @@ def run_migrations_offline() -> None:
     This generates SQL scripts without connecting to the database.
     Useful for reviewing migrations before applying them.
     """
-    # TODO: Get the database URL from configuration
-    # WHY: Need to know which database dialect to generate SQL for
-    # APPROACH: Use config.get_main_option to retrieve the URL
-    
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
@@ -68,10 +71,6 @@ def run_migrations_online() -> None:
     This connects to the database and applies migrations directly.
     Used during development and deployment.
     """
-    # TODO: Create a database engine from the configuration
-    # WHY: Need an active database connection to apply migrations
-    # APPROACH: Use engine_from_config with your settings
-    
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",
