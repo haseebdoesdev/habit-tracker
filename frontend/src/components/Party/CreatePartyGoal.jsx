@@ -7,13 +7,14 @@
  */
 
 import { useState } from 'react'
-// TODO: Import useNavigate, useParams from react-router-dom
-// TODO: Import partyGoalService
+import { useNavigate, useParams } from 'react-router-dom'
+import partyGoalService from '../../services/partyGoalService'
+import { validateRequired, validatePositiveNumber, validateDateRange } from '../../utils/validators'
 
 export default function CreatePartyGoal() {
-  // TODO: Get party ID from params or props
+  const { id: partyId } = useParams()
+  const navigate = useNavigate()
   
-  // TODO: Set up form state
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -27,115 +28,148 @@ export default function CreatePartyGoal() {
   const [error, setError] = useState('')
   
   const handleChange = (e) => {
-    // TODO: Update form data
+    setFormData({ ...formData, [e.target.name]: e.target.value })
   }
   
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setError('')
     
-    // TODO: Validate form
-    // WHY: Ensure valid data
-    // Check: title, targetValue, dates
+    // Validate required fields
+    const titleValidation = validateRequired(formData.title, 'Title')
+    if (!titleValidation.valid) {
+      setError(titleValidation.message)
+      return
+    }
     
-    // TODO: Validate dates
-    // WHY: End date must be after start date
+    const targetValidation = validatePositiveNumber(formData.targetValue, 'Target value')
+    if (!targetValidation.valid) {
+      setError(targetValidation.message)
+      return
+    }
     
-    // TODO: Call API to create goal
-    // WHY: Persist goal to backend
-    // APPROACH: await partyGoalService.createGoal(partyId, formData)
+    // Validate dates if provided
+    if (formData.startDate && formData.endDate) {
+      const dateValidation = validateDateRange(formData.startDate, formData.endDate)
+      if (!dateValidation.valid) {
+        setError(dateValidation.message)
+        return
+      }
+    }
     
-    // TODO: Navigate back to party
-    // WHY: Show the new goal
+    setIsLoading(true)
     
-    // TODO: Handle errors
-    // WHY: Show error message
+    try {
+      await partyGoalService.createGoal(partyId, {
+        title: formData.title,
+        description: formData.description || null,
+        targetValue: parseInt(formData.targetValue),
+        startDate: formData.startDate || null,
+        endDate: formData.endDate || null,
+        rewardPoints: parseInt(formData.rewardPoints) || 0
+      })
+      navigate(`/parties/${partyId}`)
+    } catch (err) {
+      setError(err.message || 'Failed to create goal')
+    } finally {
+      setIsLoading(false)
+    }
   }
   
   return (
-    <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Create Party Goal</h1>
+    <div className="max-w-2xl mx-auto animate-fade-in">
+      <h1 className="text-2xl font-bold text-gray-200 mb-6">Create Party Goal</h1>
       
       {error && (
-        <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4">{error}</div>
+        <div className="bg-terracotta-600/20 border border-terracotta-500/50 text-terracotta-300 p-3 rounded-organic mb-4">{error}</div>
       )}
       
-      <form onSubmit={handleSubmit} className="bg-white rounded-xl shadow p-6 space-y-6">
-        {/* Title */}
+      <form onSubmit={handleSubmit} className="card space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
             Goal Title *
           </label>
           <input
             name="title"
             type="text"
+            value={formData.title}
+            onChange={handleChange}
             placeholder="e.g., Complete 500 habits together"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="input"
+            required
           />
         </div>
         
-        {/* Description */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
             Description
           </label>
           <textarea
             name="description"
+            value={formData.description}
+            onChange={handleChange}
             rows={3}
             placeholder="Describe the goal..."
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            className="input"
           />
         </div>
         
-        {/* Target value */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
             Target Value *
           </label>
           <input
             name="targetValue"
             type="number"
             min="1"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            value={formData.targetValue}
+            onChange={handleChange}
+            className="input"
+            required
           />
           <p className="text-sm text-gray-500 mt-1">
             Total completions needed to achieve the goal
           </p>
         </div>
         
-        {/* Date range */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Start Date *
+            <label className="block text-sm font-semibold text-gray-300 mb-2">
+              Start Date
             </label>
             <input
               name="startDate"
               type="date"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              value={formData.startDate}
+              onChange={handleChange}
+              className="input"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              End Date *
+            <label className="block text-sm font-semibold text-gray-300 mb-2">
+              End Date
             </label>
             <input
               name="endDate"
               type="date"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              value={formData.endDate}
+              onChange={handleChange}
+              className="input"
             />
           </div>
         </div>
         
-        {/* Reward points */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="block text-sm font-semibold text-gray-300 mb-2">
             Reward Points
           </label>
           <input
             name="rewardPoints"
             type="number"
             min="0"
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+            value={formData.rewardPoints}
+            onChange={handleChange}
+            className="input"
           />
           <p className="text-sm text-gray-500 mt-1">
             Points awarded to party when goal is completed
@@ -147,14 +181,14 @@ export default function CreatePartyGoal() {
           <button
             type="submit"
             disabled={isLoading}
-            className="flex-1 py-2 px-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="btn-primary flex-1"
           >
             {isLoading ? 'Creating...' : 'Create Goal'}
           </button>
           <button
             type="button"
             onClick={() => window.history.back()}
-            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="btn-secondary"
           >
             Cancel
           </button>

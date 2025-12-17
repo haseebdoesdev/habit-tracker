@@ -8,22 +8,45 @@ Defines habit log/completion API endpoints.
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from typing import Optional, List, Dict, Tuple
 from datetime import date, datetime, timedelta
+import logging
 
 from app.database import get_db
-from app.schemas.log import LogCreate, LogUpdate, LogResponse, DailyLogSummary, WeeklyLogSummary
+from app.schemas.log import LogCreate, LogUpdate, LogResponse, DailyLogSummary, WeeklyLogSummary, MoodAnalysisResponse, MoodInsightsResponse
 from app.middleware.auth import get_current_active_user
 from app.models.user import User
 from app.models.habit import Habit
 from app.models.log import Log
 from app.utils.streak_calculator import update_habit_streaks
+from app.utils.gemini_helper import GeminiHelper
 
 
 router = APIRouter(
     prefix="/logs",
     tags=["Habit Logs"]
 )
+
+# Initialize Gemini helper
+gemini = GeminiHelper()
+
+# ---------------------------------------------------------------------------
+# In-memory cache for mood insight AI text, per user and date range.
+# The heavy lifting for sentiment/mood labels is handled by VADER
+# (see sentiment_helper); here we only cache the Gemini-generated narrative
+# string so we don't re-call the model repeatedly for the same period.
+# ---------------------------------------------------------------------------
+
+MoodInsightsKey = Tuple[int, str, str]  # (user_id, start_iso, end_iso)
+mood_insights_cache: Dict[MoodInsightsKey, Dict] = {}
+MOOD_INSIGHTS_TTL = timedelta(hours=6)
+
+
+def _is_fresh(entry: Dict, ttl: timedelta) -> bool:
+    ts: datetime = entry.get("generated_at")
+    if not ts:
+        return False
+    return datetime.utcnow() - ts < ttl
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=LogResponse)
@@ -205,6 +228,135 @@ async def get_weekly_summary(
     }
 
 
+@router.get("/mood-insights", response_model=MoodInsightsResponse)
+async def get_mood_insights(
+    start_date: Optional[date] = Query(None, description="Start date (defaults to 30 days ago)"),
+    end_date: Optional[date] = Query(None, description="End date (defaults to today)"),
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get mood trends and AI-generated insights.
+    """
+    if end_date is None:
+        end_date = date.today()
+    if start_date is None:
+        start_date = end_date - timedelta(days=30)
+    
+    # Get logs with mood analysis
+    logs = db.query(Log).filter(
+        Log.user_id == current_user.id,
+        Log.log_date >= start_date,
+        Log.log_date <= end_date,
+        Log.mood_label.isnot(None),
+        Log.mood_intensity.isnot(None)
+    ).order_by(Log.log_date.asc()).all()
+    
+    # Build mood trend data
+    mood_trend = [
+        {
+            "date": str(log.log_date),
+            "mood_intensity": log.mood_intensity,
+            "mood_label": log.mood_label,
+            "sentiment": "positive" if log.mood_intensity > 0.6 else "negative" if log.mood_intensity < 0.4 else "neutral"
+        }
+        for log in logs
+    ]
+    
+    # Build weighted mood distribution
+    # Weight factors:
+    # 1. Recency: More recent logs have higher weight (exponential decay)
+    # 2. Intensity: Higher intensity moods have more weight
+    # 3. Frequency: Normalized by total count
+    
+    mood_distribution = {}
+    today = date.today()
+    total_weight = 0.0
+    
+    if logs:
+        for log in logs:
+            label = log.mood_label
+            if not label:  # Skip if no mood label
+                continue
+            
+            # Calculate recency weight (exponential decay - more recent = higher weight)
+            days_ago = (today - log.log_date).days
+            # Use exponential decay: weight = 1 / (1 + days_ago / decay_factor)
+            # decay_factor of 14 means weight halves every ~10 days
+            decay_factor = 14.0
+            recency_weight = 1.0 / (1.0 + (days_ago / decay_factor))
+            
+            # Intensity weight (mood_intensity is 0-1, use it directly)
+            intensity_weight = float(log.mood_intensity) if log.mood_intensity is not None else 0.5
+            
+            # Combined weight: recency * (0.6) + intensity * (0.4)
+            # Recent logs are more important, but intensity matters too
+            combined_weight = (recency_weight * 0.6) + (intensity_weight * 0.4)
+            
+            # Add weighted contribution
+            if label not in mood_distribution:
+                mood_distribution[label] = 0.0
+            mood_distribution[label] += combined_weight
+            total_weight += combined_weight
+        
+        # Keep weighted values (already calculated)
+        # Frontend will calculate percentages from these weighted values
+        if total_weight > 0 and mood_distribution:
+            # Round for cleaner display
+            mood_distribution = {label: round(weight, 3) for label, weight in mood_distribution.items()}
+    
+    # Generate AI insights
+    ai_insights = "Keep tracking your mood to see patterns over time."
+    if len(logs) >= 5:
+        # Prepare context for AI
+        recent_moods = [{"date": str(log.log_date), "mood": log.mood_label, "intensity": log.mood_intensity} for log in logs[-10:]]
+        context = {
+            "total_entries": len(logs),
+            "recent_moods": recent_moods,
+            "mood_distribution": mood_distribution,
+            "average_intensity": sum(log.mood_intensity for log in logs) / len(logs) if logs else 0.5
+        }
+
+        # Check cache for this user + date range
+        cache_key: MoodInsightsKey = (
+            current_user.id,
+            start_date.isoformat(),
+            end_date.isoformat(),
+        )
+        cached = mood_insights_cache.get(cache_key)
+        if cached and _is_fresh(cached, MOOD_INSIGHTS_TTL):
+            ai_insights = cached["ai_insights"]
+        else:
+            try:
+                prompt = f"""
+                Analyze this mood tracking data from a habit tracker:
+                Total entries: {len(logs)}
+                Mood distribution: {mood_distribution}
+                Recent moods: {recent_moods[-5:]}
+                Average intensity: {context['average_intensity']:.2f}
+                
+                Provide a brief, encouraging insight (2-3 sentences) about the user's mood patterns.
+                Focus on positive observations and gentle suggestions if patterns are concerning.
+                """
+                ai_insights = await gemini.generate_text(prompt)
+                mood_insights_cache[cache_key] = {
+                    "ai_insights": ai_insights,
+                    "generated_at": datetime.utcnow(),
+                }
+            except Exception as e:
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to generate mood insights: {e}")
+                ai_insights = "Keep tracking your mood to see patterns over time."
+    
+    return MoodInsightsResponse(
+        mood_trend=mood_trend,
+        mood_distribution=mood_distribution,
+        ai_insights=ai_insights,
+        period_start=start_date,
+        period_end=end_date
+    )
+
+
 @router.get("/{log_id}", response_model=LogResponse)
 async def get_log(
     log_id: int,
@@ -331,4 +483,58 @@ async def get_daily_summary(
         completed_habits=completed_habits,
         completion_percentage=completion_percentage,
         logs=logs
+    )
+
+
+@router.post("/{log_id}/analyze-mood", response_model=MoodAnalysisResponse)
+async def analyze_log_mood(
+    log_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Analyze mood from a log entry's notes using AI.
+    """
+    log = db.query(Log).filter(
+        Log.id == log_id,
+        Log.user_id == current_user.id
+    ).first()
+    
+    if not log:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Log not found"
+        )
+    
+    if not log.notes or len(log.notes.strip()) < 10:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Log entry needs at least 10 characters of notes for mood analysis"
+        )
+    
+    # Get habit title for context
+    habit = db.query(Habit).filter(Habit.id == log.habit_id).first()
+    habit_title = habit.title if habit else "Habit"
+    
+    # Analyze mood using VADER Sentiment Analysis
+    from app.utils.sentiment_helper import sentiment_helper
+    analysis = sentiment_helper.analyze_mood_from_notes(
+        notes=log.notes,
+        log_date=str(log.log_date),
+        habit_title=habit_title
+    )
+    
+    # Update log with analysis results
+    log.mood_label = analysis["mood_label"]
+    log.mood_intensity = analysis["mood_intensity"]
+    log.mood_analyzed_at = datetime.utcnow()
+    
+    db.commit()
+    db.refresh(log)
+    
+    return MoodAnalysisResponse(
+        mood_label=analysis["mood_label"],
+        mood_intensity=analysis["mood_intensity"],
+        sentiment=analysis["sentiment"],
+        keywords=analysis["keywords"]
     )

@@ -7,10 +7,10 @@
  */
 
 import { useState, useEffect } from 'react'
-// TODO: Import accountabilityService
+import LoadingSpinner from '../Common/LoadingSpinner'
+import accountabilityService from '../../services/accountabilityService'
 
 export default function PartnerComments({ habitId }) {
-  // TODO: Set up state for comments
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
   
@@ -18,60 +18,66 @@ export default function PartnerComments({ habitId }) {
   const [isSending, setIsSending] = useState(false)
   
   useEffect(() => {
-    // TODO: Fetch comments for this habit
-    // WHY: Load existing comments
-    // APPROACH: await accountabilityService.getHabitComments(habitId)
+    const fetchComments = async () => {
+      try {
+        setIsLoading(true)
+        const data = await accountabilityService.getHabitComments(habitId)
+        setComments(data)
+      } catch (err) {
+        console.error("Failed to load comments:", err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    
+    if (habitId) {
+      fetchComments()
+    }
   }, [habitId])
   
   const handleSubmit = async (e) => {
     e.preventDefault()
     
-    // TODO: Validate comment
-    // WHY: Don't send empty comments
+    if (!newComment.trim()) {
+      return
+    }
     
-    // TODO: Set sending state
-    // WHY: Show loading
+    setIsSending(true)
     
-    // TODO: Send comment
-    // WHY: Add comment to habit
-    // APPROACH: await accountabilityService.addComment(habitId, newComment)
-    
-    // TODO: Add to local comments
-    // WHY: Immediate display
-    
-    // TODO: Clear input
-    // WHY: Ready for next comment
-    
-    // TODO: Handle errors
-    // WHY: Show error feedback
+    try {
+      const addedComment = await accountabilityService.addComment(habitId, newComment.trim())
+      setComments([...comments, addedComment])
+      setNewComment('')
+    } catch (err) {
+      console.error("Failed to add comment:", err)
+      // TODO: Show error feedback to user (could use a toast/alert component)
+    } finally {
+      setIsSending(false)
+    }
   }
   
   return (
     <div className="space-y-4">
-      <h3 className="font-medium">Partner Comments</h3>
+      <h3 className="font-medium text-gray-200">Partner Comments</h3>
       
       {/* Comments list */}
       <div className="space-y-3 max-h-64 overflow-y-auto">
         {isLoading ? (
-          <p className="text-gray-500">Loading comments...</p>
+          <LoadingSpinner size="sm" message="Loading comments..." />
         ) : comments.length === 0 ? (
-          <p className="text-gray-500">No comments yet. Be the first!</p>
+          <p className="text-gray-400">No comments yet. Be the first!</p>
         ) : (
-          /* TODO: Map through comments */
-          /*
-          {comments.map(comment => (
-            <div key={comment.id} className="p-3 bg-gray-50 rounded-lg">
+          comments.map(comment => (
+            <div key={comment.id} className="p-3 bg-dark-300/50 rounded-soft border border-dark-400/50">
               <div className="flex items-center space-x-2 mb-1">
-                <span className="font-medium text-sm">{comment.authorUsername}</span>
-                <span className="text-xs text-gray-400">
-                  {new Date(comment.createdAt).toLocaleDateString()}
+                <span className="font-medium text-sm text-gray-200">{comment.author_username}</span>
+                <span className="text-xs text-gray-500">
+                  {new Date(comment.created_at).toLocaleDateString()}
                 </span>
               </div>
-              <p className="text-gray-700">{comment.content}</p>
+              <p className="text-gray-300">{comment.content}</p>
             </div>
-          ))}
-          */
-          <p className="text-gray-500">Comments will appear here</p>
+          ))
         )}
       </div>
       
@@ -82,12 +88,12 @@ export default function PartnerComments({ habitId }) {
           value={newComment}
           onChange={(e) => setNewComment(e.target.value)}
           placeholder="Leave a comment..."
-          className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+          className="input flex-1"
         />
         <button
           type="submit"
           disabled={isSending || !newComment.trim()}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="btn-primary text-sm px-4 py-2"
         >
           {isSending ? '...' : 'Send'}
         </button>

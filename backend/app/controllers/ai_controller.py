@@ -8,8 +8,8 @@ Handles Google Gemini AI integration for habit suggestions and insights.
 
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
-from typing import Optional, List, Dict
-from datetime import date, timedelta
+from typing import Optional, List, Dict, Tuple
+from datetime import date, timedelta, datetime
 
 from app.models.habit import Habit
 from app.models.log import Log
@@ -17,6 +17,34 @@ from app.utils.gemini_helper import GeminiHelper
 
 # Initialize helper
 gemini = GeminiHelper()
+
+# ---------------------------------------------------------------------------
+# In-memory caches to reduce Gemini usage per user / period.
+# NOTE:
+# - Process-local only; replace with Redis/DB if you need shared or persistent
+#   caching across workers.
+# - Keys are scoped by user_id to avoid any cross-user data mixing.
+# ---------------------------------------------------------------------------
+
+HabitSuggestionsKey = Tuple[int, str]
+WeeklySummaryKey = Tuple[int, str]  # (user_id, week_start_iso)
+MotivationKey = Tuple[int, str]     # (user_id, date_iso)
+
+habit_suggestions_cache: Dict[HabitSuggestionsKey, Dict] = {}
+weekly_summary_cache: Dict[WeeklySummaryKey, Dict] = {}
+motivation_cache: Dict[MotivationKey, Dict] = {}
+
+SUGGESTIONS_TTL = timedelta(hours=6)
+WEEKLY_SUMMARY_TTL = timedelta(days=1)
+MOTIVATION_TTL = timedelta(hours=6)
+
+
+def _is_fresh(entry: Dict, ttl: timedelta) -> bool:
+    """Return True if cache entry is still within its TTL."""
+    ts: datetime = entry.get("generated_at")
+    if not ts:
+        return False
+    return datetime.utcnow() - ts < ttl
 
 async def get_habit_suggestions(current_user, db: Session, category: Optional[str] = None):
     """
@@ -39,10 +67,19 @@ async def get_habit_suggestions(current_user, db: Session, category: Optional[st
     Format the response as a simple list of objects with 'title', 'description', and 'category'.
     """
     
-    # 3. Call AI
+    # 3. Check cache (per user + category)
+    cache_key: HabitSuggestionsKey = (current_user.id, (category or "").strip().lower())
+    cached = habit_suggestions_cache.get(cache_key)
+    if cached and _is_fresh(cached, SUGGESTIONS_TTL):
+        return cached["data"]
+    
+    # 4. Call AI and cache
     try:
-        # Note: assuming gemini helper has this method based on file stubs
         suggestions = await gemini.get_habit_suggestions(existing_habits=habit_names, category=category)
+        habit_suggestions_cache[cache_key] = {
+            "data": suggestions,
+            "generated_at": datetime.utcnow(),
+        }
         return suggestions
     except Exception as e:
         # Fallback if AI fails
@@ -74,9 +111,19 @@ async def get_weekly_summary(current_user, db: Session):
         "date_range": f"{week_ago} to {today}"
     }
     
-    # 3. Call AI
+    # 3. Check cache (per user + week_start)
+    cache_key: WeeklySummaryKey = (current_user.id, week_ago.isoformat())
+    cached = weekly_summary_cache.get(cache_key)
+    if cached and _is_fresh(cached, WEEKLY_SUMMARY_TTL):
+        return cached["data"]
+
+    # 4. Call AI and cache
     try:
         summary = await gemini.generate_weekly_summary(stats=stats, habits=[])
+        weekly_summary_cache[cache_key] = {
+            "data": summary,
+            "generated_at": datetime.utcnow(),
+        }
         return summary
     except Exception as e:
         return {
@@ -98,12 +145,25 @@ async def get_motivation_message(current_user, db: Session):
     context = {
         "username": current_user.username,
         "active_streaks_count": active_streaks,
-        "time_of_day": "day" # Could calculate based on server time
+        "time_of_day": "day"  # Could calculate based on server time
     }
     
+    # 2. Check cache (per user + calendar day)
+    today_iso = date.today().isoformat()
+    cache_key: MotivationKey = (current_user.id, today_iso)
+    cached = motivation_cache.get(cache_key)
+    if cached and _is_fresh(cached, MOTIVATION_TTL):
+        return cached["data"]
+    
+    # 3. Call AI and cache
     try:
         message = await gemini.get_motivation_message(context)
-        return {"message": message, "mood": "encouraging"}
+        result = {"message": message, "mood": "encouraging"}
+        motivation_cache[cache_key] = {
+            "data": result,
+            "generated_at": datetime.utcnow(),
+        }
+        return result
     except Exception:
         return {"message": "You can do this! One step at a time.", "mood": "supportive"}
 

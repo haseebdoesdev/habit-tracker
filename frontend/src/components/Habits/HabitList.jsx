@@ -7,14 +7,15 @@
  */
 
 import { useState, useEffect } from 'react'
-// TODO: Import Link from react-router-dom
-// TODO: Import habitService
+import { Link } from 'react-router-dom'
+import LoadingState from '../Common/LoadingState'
+import habitService from '../../services/habitService'
+import { FireIcon } from '../Common/Icons'
 
 export default function HabitList() {
-  // TODO: Set up state for habits
   const [habits, setHabits] = useState([])
+  const [completingId, setCompletingId] = useState(null)
   
-  // TODO: Set up filter state
   const [filter, setFilter] = useState({
     category: 'all',
     status: 'active'
@@ -24,62 +25,93 @@ export default function HabitList() {
   const [error, setError] = useState(null)
   
   useEffect(() => {
-    // TODO: Fetch habits based on filters
-    // WHY: Load habit data
-    // APPROACH: habitService.getHabits(filter)
+    const fetchHabits = async () => {
+      try {
+        setIsLoading(true)
+        const params = {}
+        if (filter.category !== 'all') {
+          params.category = filter.category
+        }
+        if (filter.status !== 'all') {
+          params.is_active = filter.status === 'active'
+        }
+        const data = await habitService.getHabits(params)
+        setHabits(Array.isArray(data) ? data : [])
+        setError(null)
+      } catch (err) {
+        setError(err.message || 'Failed to load habits')
+      } finally {
+        setIsLoading(false)
+      }
+    }
     
-    // TODO: Update habits state
-    // WHY: Display fetched habits
-    
-    // TODO: Handle errors
-    // WHY: Show error state
+    fetchHabits()
   }, [filter])
   
   const handleFilterChange = (key, value) => {
-    // TODO: Update filter state
-    // WHY: Trigger refetch with new filters
-    // APPROACH: setFilter({ ...filter, [key]: value })
+    setFilter({ ...filter, [key]: value })
+  }
+
+  const handleCompleteHabit = async (habitId) => {
+    try {
+      setCompletingId(habitId)
+      const response = await habitService.completeHabit(habitId)
+      
+      // Update the habit in the list
+      setHabits(prev => prev.map(h => {
+        if (h.id === habitId) {
+          return {
+            ...h,
+            completed_today: true,
+            current_streak: response.current_streak,
+            longest_streak: response.longest_streak
+          }
+        }
+        return h
+      }))
+    } catch (err) {
+      alert(err.message || 'Failed to complete habit')
+    } finally {
+      setCompletingId(null)
+    }
   }
   
-  // TODO: Define category options for filter
   const categories = ['all', 'Health', 'Fitness', 'Learning', 'Productivity', 'Mindfulness']
   
   return (
-    <div className="space-y-6">
-      {/* Header */}
+    <div className="space-y-6 animate-fade-in">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">My Habits</h1>
-        {/* TODO: Add Link to create new habit */}
-        <a
-          href="/habits/new"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+        <h1 className="text-2xl font-bold text-gray-200">My Habits</h1>
+        <Link
+          to="/habits/new"
+          className="btn-primary"
         >
           + New Habit
-        </a>
+        </Link>
       </div>
       
-      {/* TODO: Filter controls */}
-      <div className="bg-white rounded-xl shadow p-4 flex space-x-4">
-        {/* Category filter */}
-        <div>
-          <label className="block text-sm text-gray-600 mb-1">Category</label>
+      <div className="card flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+        <div className="flex-1">
+          <label className="block text-sm text-gray-400 mb-2">Category</label>
           <select
             value={filter.category}
             onChange={(e) => handleFilterChange('category', e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg"
+            className="input"
           >
-            {/* TODO: Map category options */}
-            <option value="all">All Categories</option>
+            {categories.map(cat => (
+              <option key={cat} value={cat}>
+                {cat === 'all' ? 'All Categories' : cat}
+              </option>
+            ))}
           </select>
         </div>
         
-        {/* Status filter */}
-        <div>
-          <label className="block text-sm text-gray-600 mb-1">Status</label>
+        <div className="flex-1">
+          <label className="block text-sm text-gray-400 mb-2">Status</label>
           <select
             value={filter.status}
             onChange={(e) => handleFilterChange('status', e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg"
+            className="input"
           >
             <option value="active">Active</option>
             <option value="paused">Paused</option>
@@ -88,41 +120,87 @@ export default function HabitList() {
         </div>
       </div>
       
-      {/* TODO: Display loading state */}
       {isLoading && (
-        <div className="text-center py-8 text-gray-500">Loading habits...</div>
+        <LoadingState message="Loading habits..." />
       )}
       
-      {/* TODO: Display error state */}
       {error && (
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg">{error}</div>
+        <div className="bg-terracotta-600/20 border border-terracotta-500/50 text-terracotta-300 p-4 rounded-organic">{error}</div>
       )}
       
-      {/* Habits grid/list */}
       {!isLoading && !error && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {habits.length === 0 ? (
-            <div className="col-span-full text-center py-8 text-gray-500">
-              No habits found. Create your first habit!
+            <div className="col-span-full empty-state">
+              <p className="empty-state-text">No habits found. Create your first habit!</p>
+              <Link to="/habits/new" className="link mt-4 inline-block">Create Habit</Link>
             </div>
           ) : (
-            /* TODO: Map through habits */
-            /* WHY: Display each habit as a card */
-            /* APPROACH:
             habits.map(habit => (
-              <div key={habit.id} className="bg-white rounded-xl shadow p-4">
-                <h3 className="font-semibold">{habit.title}</h3>
-                <p className="text-gray-500 text-sm">{habit.category}</p>
-                <div className="mt-2 flex justify-between items-center">
-                  <span className="text-orange-500 font-bold">{habit.currentStreak} day streak</span>
-                  <Link to={`/habits/${habit.id}/edit`} className="text-blue-600">Edit</Link>
+              <div key={habit.id} className={`card transition-all ${
+                habit.completed_today ? 'bg-solar-600/20 border-solar-500/50' : ''
+              }`}>
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleCompleteHabit(habit.id)}
+                        disabled={completingId === habit.id || habit.completed_today}
+                        className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors flex-shrink-0 ${
+                          habit.completed_today
+                            ? 'bg-solar-500 border-solar-500 text-white cursor-default'
+                            : 'border-dark-500 hover:border-solar-400 hover:bg-solar-600/20 cursor-pointer'
+                        } ${completingId === habit.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        title={habit.completed_today ? 'Completed today' : 'Mark as complete'}
+                      >
+                        {habit.completed_today && (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </button>
+                      <Link 
+                        to={`/habits/${habit.id}`}
+                        className={`font-semibold hover:underline ${
+                          habit.completed_today ? 'text-gray-500 line-through' : 'text-gray-200 hover:text-accent-400'
+                        }`}
+                      >
+                        {habit.title}
+                      </Link>
+                    </div>
+                    <p className="text-gray-400 text-sm mt-1 ml-8">{habit.category || 'Uncategorized'}</p>
+                  </div>
+                  <div
+                    className="w-4 h-4 rounded-full flex-shrink-0 border border-dark-400"
+                    style={{ backgroundColor: habit.color || '#0073e6' }}
+                  />
+                </div>
+                <div className="mt-3 flex justify-between items-center ml-8">
+                  <div className="flex items-center gap-4">
+                    <span className="text-sunset-400 font-bold flex items-center gap-1">
+                      <FireIcon className="w-4 h-4" />
+                      <span>{habit.current_streak || habit.currentStreak || 0}</span>
+                      <span className="text-xs text-gray-500 font-normal">day streak</span>
+                    </span>
+                    {habit.completed_today && (
+                      <span className="text-xs text-solar-400 font-medium">✓ Done today</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <Link 
+                      to={`/logs/daily/${new Date().toISOString().split('T')[0]}`}
+                      className="text-sm text-accent-400 hover:text-accent-300 hover:underline"
+                      title="Add detailed log"
+                    >
+                      Log
+                    </Link>
+                    <Link to={`/habits/${habit.id}`} className="text-sm text-accent-400 hover:text-accent-300 hover:underline">
+                      View
+                    </Link>
+                  </div>
                 </div>
               </div>
             ))
-            */
-            <div className="col-span-full text-center py-8 text-gray-500">
-              Render habit cards here
-            </div>
           )}
         </div>
       )}

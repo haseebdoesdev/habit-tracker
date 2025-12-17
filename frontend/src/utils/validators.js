@@ -8,9 +8,6 @@
 
 /**
  * Validate email format
- * 
- * TODO: Implement email validation
- * WHY: Ensure valid email before submission
  */
 export function validateEmail(email) {
   if (!email || typeof email !== 'string') {
@@ -29,10 +26,6 @@ export function validateEmail(email) {
 
 /**
  * Validate password strength
- * 
- * TODO: Implement password validation
- * WHY: Ensure secure passwords
- * SECURITY: Enforce minimum requirements
  */
 export function validatePassword(password) {
   if (!password || typeof password !== 'string') {
@@ -64,9 +57,6 @@ export function validatePassword(password) {
 
 /**
  * Validate password confirmation matches
- * 
- * TODO: Implement password match validation
- * WHY: Prevent typos in password
  */
 export function validatePasswordMatch(password, confirmPassword) {
   if (!password || !confirmPassword) {
@@ -82,9 +72,6 @@ export function validatePasswordMatch(password, confirmPassword) {
 
 /**
  * Validate username
- * 
- * TODO: Implement username validation
- * WHY: Ensure valid username format
  */
 export function validateUsername(username) {
   if (!username || typeof username !== 'string') {
@@ -112,9 +99,6 @@ export function validateUsername(username) {
 
 /**
  * Validate required field
- * 
- * TODO: Implement required field validation
- * WHY: Common validation for required inputs
  */
 export function validateRequired(value, fieldName = 'This field') {
   if (value === null || value === undefined) {
@@ -134,9 +118,6 @@ export function validateRequired(value, fieldName = 'This field') {
 
 /**
  * Validate minimum length
- * 
- * TODO: Implement min length validation
- * WHY: String length requirements
  */
 export function validateMinLength(value, minLength, fieldName = 'This field') {
   if (value === null || value === undefined) {
@@ -154,9 +135,6 @@ export function validateMinLength(value, minLength, fieldName = 'This field') {
 
 /**
  * Validate maximum length
- * 
- * TODO: Implement max length validation
- * WHY: Prevent overly long input
  */
 export function validateMaxLength(value, maxLength, fieldName = 'This field') {
   if (value === null || value === undefined) {
@@ -174,9 +152,6 @@ export function validateMaxLength(value, maxLength, fieldName = 'This field') {
 
 /**
  * Validate date is in future
- * 
- * TODO: Implement future date validation
- * WHY: Goal end dates should be in future
  */
 export function validateFutureDate(date) {
   if (!date) {
@@ -201,9 +176,6 @@ export function validateFutureDate(date) {
 
 /**
  * Validate date range
- * 
- * TODO: Implement date range validation
- * WHY: End date must be after start date
  */
 export function validateDateRange(startDate, endDate) {
   if (!startDate || !endDate) {
@@ -229,9 +201,6 @@ export function validateDateRange(startDate, endDate) {
 
 /**
  * Validate positive number
- * 
- * TODO: Implement positive number validation
- * WHY: Targets, points should be positive
  */
 export function validatePositiveNumber(value, fieldName = 'This field') {
   if (value === null || value === undefined || value === '') {
@@ -253,9 +222,6 @@ export function validatePositiveNumber(value, fieldName = 'This field') {
 
 /**
  * Run multiple validators
- * 
- * TODO: Implement validator chain
- * WHY: Apply multiple validations to a field
  */
 export function validateAll(value, validators) {
   if (!Array.isArray(validators) || validators.length === 0) {

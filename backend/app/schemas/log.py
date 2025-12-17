@@ -49,6 +49,9 @@ class LogResponse(LogBase):
     log_date: date
     completed: bool
     completion_time: Optional[datetime] = None
+    mood_label: Optional[str] = None
+    mood_intensity: Optional[float] = Field(None, ge=0.0, le=1.0)
+    mood_analyzed_at: Optional[datetime] = None
     created_at: datetime
 
     class Config:
@@ -101,3 +104,24 @@ class MonthlyLogSummary(BaseModel):
     completion_rate: float = 0.0
     weekly_summaries: List[WeeklyLogSummary] = []
     streak_info: Optional[dict] = None
+
+
+class MoodAnalysisResponse(BaseModel):
+    """
+    Schema for mood analysis result.
+    """
+    mood_label: str
+    mood_intensity: float = Field(ge=0.0, le=1.0)
+    sentiment: str  # "positive", "neutral", "negative"
+    keywords: List[str] = []
+
+
+class MoodInsightsResponse(BaseModel):
+    """
+    Schema for mood insights summary.
+    """
+    mood_trend: List[dict] = []  # [{date, mood_intensity, mood_label}]
+    mood_distribution: dict = {}  # {mood_label: count}
+    ai_insights: str = ""
+    period_start: date
+    period_end: date

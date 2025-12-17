@@ -65,6 +65,9 @@ async def create_habit(
     frequency_enum = parse_frequency(habit_data.frequency)
     category_enum = parse_category(habit_data.category) if habit_data.category else HabitCategory.OTHER
     
+    # Normalize empty strings to None for optional fields
+    reminder_time = habit_data.reminder_time.strip() if habit_data.reminder_time and habit_data.reminder_time.strip() else None
+    
     new_habit = Habit(
         user_id=current_user.id,
         party_id=habit_data.party_id,
@@ -73,7 +76,7 @@ async def create_habit(
         frequency=frequency_enum,
         category=category_enum,
         target_days=habit_data.target_days,
-        reminder_time=habit_data.reminder_time,
+        reminder_time=reminder_time,
         color=habit_data.color,
         icon=habit_data.icon,
         is_active=True,
@@ -201,11 +204,18 @@ async def update_habit(
     update_data = habit_data.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         if value is not None:
+            # Normalize empty strings to None for optional string fields
+            if field in ["reminder_time", "target_days", "description"] and isinstance(value, str) and not value.strip():
+                value = None
+            
             if field == "frequency":
                 value = parse_frequency(value)
             elif field == "category":
                 value = parse_category(value)
-            setattr(habit, field, value)
+            
+            # Only set if value is not None (after normalization)
+            if value is not None:
+                setattr(habit, field, value)
     
     db.commit()
     db.refresh(habit)

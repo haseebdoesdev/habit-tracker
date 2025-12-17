@@ -1,85 +1,104 @@
 /**
  * Party Context
  * =============
- * [NOUMAN] This is your context to implement.
- * 
  * Provides party state for guild/party features.
  */
 
-import { createContext, useContext, useState, useEffect } from 'react'
-// TODO: Import partyService
-// TODO: Import useAuth hook
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import partyService from '../services/partyService'
+import { useAuth } from './AuthContext'
 
 const PartyContext = createContext(null)
 
 export function PartyProvider({ children }) {
-  // TODO: Set up party state
-  // WHY: Track user's parties and current party
   const [myParties, setMyParties] = useState([])
   const [currentParty, setCurrentParty] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null)
   
-  // TODO: Get auth state
-  // WHY: Only fetch parties if logged in
-  // const { user } = useAuth()
+  const { user } = useAuth()
   
-  useEffect(() => {
-    // TODO: Fetch user's parties when logged in
-    // WHY: Load party data on auth
-    // APPROACH: if (user) fetchMyParties()
-    
-    const fetchMyParties = async () => {
-      // TODO: Call party service
-      // WHY: Get user's party list
-      // APPROACH: await partyService.getParties()
-      
-      // TODO: Update state
-      // WHY: Store fetched parties
+  const refreshParties = useCallback(async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      // Fetch parties the user is a member of
+      const parties = await partyService.getParties()
+      setMyParties(parties)
+    } catch (err) {
+      console.error("Failed to fetch parties", err)
+      setError("Could not load your parties.")
+    } finally {
+      setIsLoading(false)
     }
-    
-    // if (user) fetchMyParties()
   }, [])
   
+  // Fetch parties when user logs in
+  useEffect(() => {
+    if (user) {
+      refreshParties()
+    } else {
+      setMyParties([])
+      setCurrentParty(null)
+    }
+  }, [user, refreshParties])
+  
   const selectParty = async (partyId) => {
-    // TODO: Set current party
-    // WHY: User selected a party to view
-    // APPROACH: Find party in myParties or fetch from API
+    setIsLoading(true)
+    try {
+      const party = await partyService.getParty(partyId)
+      setCurrentParty(party)
+      return party
+    } catch (err) {
+      console.error("Failed to select party", err)
+      setError("Could not load party details.")
+    } finally {
+      setIsLoading(false)
+    }
   }
   
   const joinParty = async (inviteCode) => {
-    // TODO: Call join API
-    // WHY: Join a party with invite code
-    // APPROACH: await partyService.joinParty(inviteCode)
-    
-    // TODO: Add to myParties
-    // WHY: Update local state
-    
-    // TODO: Return joined party
-    // WHY: Allow navigation to party
+    setIsLoading(true)
+    setError(null)
+    try {
+      const response = await partyService.joinParty(inviteCode)
+      await refreshParties() // Refresh list to include new party
+      return response
+    } catch (err) {
+      const msg = err.response?.data?.detail || "Failed to join party"
+      setError(msg)
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
   }
   
   const leaveParty = async (partyId) => {
-    // TODO: Call leave API
-    // WHY: Leave a party
-    // APPROACH: await partyService.leaveParty(partyId)
-    
-    // TODO: Remove from myParties
-    // WHY: Update local state
-    
-    // TODO: Clear currentParty if it was the left party
-    // WHY: No longer a member
-  }
-  
-  const refreshParties = async () => {
-    // TODO: Refetch user's parties
-    // WHY: Sync with server state
-    // APPROACH: Call API and update myParties
+    setIsLoading(true)
+    try {
+      await partyService.leaveParty(partyId)
+      
+      // Update local state
+      setMyParties(prev => prev.filter(p => p.id !== partyId))
+      
+      // If we are viewing the party we just left, clear it
+      if (currentParty && currentParty.id === partyId) {
+        setCurrentParty(null)
+      }
+    } catch (err) {
+      const msg = err.response?.data?.detail || "Failed to leave party"
+      setError(msg)
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
   }
   
   const value = {
     myParties,
     currentParty,
     isLoading,
+    error,
     selectParty,
     joinParty,
     leaveParty,

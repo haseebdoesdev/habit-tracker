@@ -68,6 +68,8 @@ class Habit(Base):
     logs = relationship("Log", back_populates="habit", cascade="all, delete-orphan")
     # Connect habit → party
     party = relationship("Party", back_populates="habits")
+    # Connect habit → comments
+    comments = relationship("Comment", back_populates="habit", cascade="all, delete-orphan")
     
     def __repr__(self):
         """String representation for debugging."""

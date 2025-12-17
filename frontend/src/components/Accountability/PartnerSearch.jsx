@@ -7,10 +7,9 @@
  */
 
 import { useState } from 'react'
-// TODO: Import accountabilityService
+import accountabilityService from '../../services/accountabilityService'
 
 export default function PartnerSearch() {
-  // TODO: Set up search state
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
   const [isSearching, setIsSearching] = useState(false)
@@ -19,33 +18,32 @@ export default function PartnerSearch() {
   const handleSearch = async (e) => {
     e.preventDefault()
     
-    // TODO: Validate query
-    // WHY: Don't search empty string
+    if (!query.trim()) {
+      return
+    }
     
-    // TODO: Set loading state
-    // WHY: Show searching indicator
+    setIsSearching(true)
     
-    // TODO: Call search API
-    // WHY: Find users matching query
-    // APPROACH: await accountabilityService.searchUsers(query)
-    
-    // TODO: Update results
-    // WHY: Display found users
-    
-    // TODO: Handle errors
-    // WHY: Show error state
+    try {
+      const data = await accountabilityService.searchUsers(query.trim())
+      setResults(data)
+    } catch (err) {
+      console.error("Failed to search users:", err)
+      setResults([])
+    } finally {
+      setIsSearching(false)
+    }
   }
   
   const handleSendRequest = async (userId) => {
-    // TODO: Send partnership request
-    // WHY: Initiate partnership
-    // APPROACH: await accountabilityService.requestPartnership(userId, message)
-    
-    // TODO: Remove from results
-    // WHY: Already requested
-    
-    // TODO: Show success feedback
-    // WHY: Confirm request sent
+    try {
+      await accountabilityService.requestPartnership(userId, message || null)
+      setResults(results.filter(user => user.id !== userId))
+      setMessage('')
+      // Success feedback: user removed from results indicates request sent
+    } catch (err) {
+      console.error("Failed to send partnership request:", err)
+    }
   }
   
   return (
@@ -72,8 +70,6 @@ export default function PartnerSearch() {
       
       {/* Search results */}
       <div className="space-y-3">
-        {/* TODO: Map through results */}
-        {/*
         {results.map(user => (
           <div key={user.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
             <div className="flex items-center space-x-3">
@@ -93,7 +89,6 @@ export default function PartnerSearch() {
             </button>
           </div>
         ))}
-        */}
         
         {results.length === 0 && query && !isSearching && (
           <p className="text-gray-500 text-center py-4">

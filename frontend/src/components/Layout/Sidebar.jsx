@@ -1,74 +1,88 @@
 /**
  * Sidebar Component
  * =================
- * [OMAMAH] This is your component to implement.
- * 
  * Side navigation for logged in users.
  */
 
-// TODO: Import Link, useLocation from react-router-dom
-// TODO: Import useAuth hook
+import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
+import { 
+  HomeIcon, ListIcon, CheckIcon, ChartIcon, SmileIcon, 
+  UsersIcon, HandshakeIcon, CalendarIcon, SparklesIcon, 
+  UserIcon, SettingsIcon, FireIcon 
+} from '../Common/Icons'
 
 export default function Sidebar() {
-  // TODO: Get current location for active state
-  // WHY: Highlight current page in nav
-  // APPROACH: const location = useLocation()
+  const location = useLocation()
+  const { user } = useAuth()
   
-  // TODO: Define navigation items
+  const todayDate = new Date().toISOString().split('T')[0]
+  
   const navItems = [
-    { path: '/', label: 'Dashboard', icon: '🏠' },
-    { path: '/habits', label: 'My Habits', icon: '📋' },
-    { path: '/analytics', label: 'Analytics', icon: '📊' },
-    { path: '/ai', label: 'AI Suggestions', icon: '🤖' },
-    { path: '/parties', label: 'Parties', icon: '👥' },
-    { path: '/accountability', label: 'Partners', icon: '🤝' },
+    { path: '/', label: 'Dashboard', Icon: HomeIcon },
+    { path: '/habits', label: 'My Habits', Icon: ListIcon },
+    { path: `/logs/daily/${todayDate}`, label: 'Today\'s Logs', Icon: CheckIcon },
+    { path: '/analytics', label: 'Analytics', Icon: ChartIcon },
+    { path: '/analytics/mood', label: 'Mood Insights', Icon: SmileIcon },
+    { path: '/parties', label: 'Parties', Icon: UsersIcon },
+    { path: '/accountability', label: 'Partners', Icon: HandshakeIcon },
+    { path: '/calendar', label: 'Calendar', Icon: CalendarIcon },
+    { path: '/ai', label: 'AI Assistant', Icon: SparklesIcon },
+    { path: '/profile', label: 'Profile', Icon: UserIcon },
+    { path: '/settings', label: 'Settings', Icon: SettingsIcon },
   ]
   
   const isActive = (path) => {
-    // TODO: Check if current path matches
-    // WHY: Determine if nav item is active
-    // APPROACH: Compare with location.pathname
-    return false // Placeholder
+    if (path === '/') {
+      return location.pathname === '/'
+    }
+    // Special handling for daily logs - match any date
+    if (path.startsWith('/logs/daily/')) {
+      return location.pathname.startsWith('/logs/daily/')
+    }
+    return location.pathname.startsWith(path)
   }
   
+  const userInitial = user?.username?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'
+  
   return (
-    <aside className="w-64 bg-white shadow-lg min-h-screen">
-      <div className="p-4">
-        {/* User profile summary */}
-        <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg mb-6">
-          {/* TODO: Show user avatar and name */}
-          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold">
-            U
+    <aside className="w-64 bg-dark-100/80 backdrop-blur-md shadow-gentle border-r border-dark-400/50 min-h-screen">
+      <div className="p-5">
+        <Link to="/profile" className="block mb-8 animate-fade-in">
+          <div className="flex items-center space-x-3 p-4 bg-dark-200/50 rounded-organic hover:shadow-soft transition-all duration-300 cursor-pointer border border-dark-400/30">
+            <div className="w-12 h-12 bg-gradient-to-br from-accent-500 to-accent-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-soft">
+              {userInitial}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-semibold text-gray-200 truncate">{user?.username || user?.email || 'User'}</p>
+              <p className="text-sm text-gray-400">View Profile</p>
+            </div>
           </div>
-          <div>
-            <p className="font-medium">Username</p>
-            <p className="text-sm text-gray-500">View Profile</p>
-          </div>
-        </div>
+        </Link>
         
-        {/* Navigation */}
-        <nav className="space-y-1">
-          {/* TODO: Map through navItems */}
-          {navItems.map(item => (
-            <a
-              key={item.path}
-              href={item.path}
-              className={`flex items-center space-x-3 px-3 py-2 rounded-lg transition-colors ${
-                isActive(item.path)
-                  ? 'bg-blue-100 text-blue-600'
-                  : 'text-gray-600 hover:bg-gray-100'
-              }`}
-            >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
-            </a>
-          ))}
+        <nav className="space-y-2">
+          {navItems.map((item, index) => {
+            const Icon = item.Icon
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                className={`${isActive(item.path) ? 'nav-item-active' : 'nav-item'} animate-slide-up`}
+                style={{ animationDelay: `${index * 0.05}s` }}
+              >
+                <Icon className="w-5 h-5" />
+                <span>{item.label}</span>
+              </Link>
+            )
+          })}
         </nav>
         
-        {/* Quick stats */}
-        <div className="mt-8 p-4 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl text-white">
-          <p className="text-sm opacity-80">Current Streak</p>
-          <p className="text-2xl font-bold">🔥 0 days</p>
+        <div className="mt-8 p-5 bg-gradient-to-br from-accent-500 to-accent-600 rounded-organic text-white shadow-elevated glow-accent animate-fade-in">
+          <div className="flex items-center space-x-2 mb-1">
+            <FireIcon className="w-5 h-5" />
+            <p className="text-sm opacity-90 font-medium">Current Streak</p>
+          </div>
+          <p className="text-3xl font-bold">0 days</p>
         </div>
       </div>
     </aside>

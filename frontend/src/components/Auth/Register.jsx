@@ -6,6 +6,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import authService from '../../services/authService'
+import { SeedlingIcon } from '../Common/Icons'
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -26,6 +27,7 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    e.stopPropagation()
     setError('')
 
     // Validate passwords match
@@ -35,8 +37,8 @@ export default function Register() {
     }
 
     // Validate password strength
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long')
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters long')
       return
     }
 
@@ -47,7 +49,8 @@ export default function Register() {
       await authService.register({
         email: formData.email,
         username: formData.username,
-        password: formData.password
+        password: formData.password,
+        password_confirm: formData.confirmPassword
       })
 
       // Redirect to login after successful registration
@@ -55,8 +58,9 @@ export default function Register() {
         state: { message: 'Account created successfully! Please log in.' }
       })
     } catch (err) {
-      // Handle errors
-      const message = err.response?.data?.message || 'Registration failed. Please try again.'
+      // Handle errors - extract message from error object
+      // The API interceptor sets error.message from detail/message
+      const message = err.message || err.response?.data?.detail || err.response?.data?.message || 'Registration failed. Please try again.'
       setError(message)
     } finally {
       setIsLoading(false)
@@ -64,26 +68,29 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
-        <div>
-          <h2 className="text-3xl font-bold text-center text-gray-900">
+    <div className="min-h-screen flex items-center justify-center gradient-lunar p-4">
+      <div className="max-w-md w-full space-y-8 p-8 lg:p-10 card-elevated animate-fade-in">
+        <div className="text-center">
+          <SeedlingIcon className="w-16 h-16 mx-auto mb-4 text-solar-400" />
+          <h2 className="text-3xl font-bold text-gradient-martian mb-2">
             Create Account
           </h2>
-          <p className="mt-2 text-center text-gray-600">
+          <p className="text-gray-400 font-medium">
             Start tracking your habits today
           </p>
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg">
-            {error}
+          <div className="bg-terracotta-600/20 text-terracotta-300 p-4 rounded-soft border border-terracotta-500/50 animate-slide-up">
+            <div className="flex items-center space-x-2">
+              <span className="font-medium">{error}</span>
+            </div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-semibold text-lunar-700 mb-2">
               Email
             </label>
             <input
@@ -92,13 +99,13 @@ export default function Register() {
               value={formData.email}
               onChange={handleChange}
               placeholder="Enter your email"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="input"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-semibold text-lunar-700 mb-2">
               Username
             </label>
             <input
@@ -107,13 +114,13 @@ export default function Register() {
               value={formData.username}
               onChange={handleChange}
               placeholder="Choose a username"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="input"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-semibold text-lunar-700 mb-2">
               Password
             </label>
             <input
@@ -122,16 +129,16 @@ export default function Register() {
               value={formData.password}
               onChange={handleChange}
               placeholder="Create a password"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="input"
               required
             />
-            <p className="mt-1 text-xs text-gray-500">
-              Minimum 6 characters
+            <p className="mt-2 text-xs text-gray-500">
+              Minimum 8 characters
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-sm font-semibold text-lunar-700 mb-2">
               Confirm Password
             </label>
             <input
@@ -140,7 +147,7 @@ export default function Register() {
               value={formData.confirmPassword}
               onChange={handleChange}
               placeholder="Confirm your password"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+              className="input"
               required
             />
           </div>
@@ -148,15 +155,15 @@ export default function Register() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="btn-primary w-full"
           >
             {isLoading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
 
-        <p className="text-center text-gray-600">
+        <p className="text-center text-gray-400 animate-slide-up" style={{ animationDelay: '0.2s' }}>
           Already have an account?{' '}
-          <Link to="/login" className="text-blue-600 hover:underline">
+          <Link to="/login" className="link font-semibold">
             Sign in
           </Link>
         </p>

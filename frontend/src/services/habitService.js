@@ -9,18 +9,14 @@
 import api from './api'
 
 const habitService = {
-  // TODO: Implement getHabits
-  // WHY: Fetch user's habits with optional filters
   async getHabits(filters = {}) {
-    return api.get('/habits', { params: filters })
+    return api.get('/habits/', { params: filters })
       .then(response => response.data)
       .catch(error => {
         throw error
       })
   },
   
-  // TODO: Implement getHabit
-  // WHY: Fetch single habit by ID
   async getHabit(habitId) {
     return api.get(`/habits/${habitId}`)
       .then(response => response.data)
@@ -29,28 +25,54 @@ const habitService = {
       })
   },
   
-  // TODO: Implement createHabit
-  // WHY: Create a new habit
   async createHabit(habitData) {
-    return api.post('/habits', habitData)
+    // Convert camelCase to snake_case for backend compatibility
+    // Also convert empty strings to null for optional fields
+    const reminderTime = habitData.reminderTime || habitData.reminder_time
+    const requestData = {
+      ...habitData,
+      reminder_time: reminderTime && reminderTime.trim() ? reminderTime.trim() : null,
+      target_days: (habitData.targetDays || habitData.target_days) || null,
+      party_id: (habitData.partyId || habitData.party_id) || null,
+      is_active: habitData.isActive !== undefined ? habitData.isActive : (habitData.is_active !== undefined ? habitData.is_active : true)
+    }
+    // Remove camelCase versions
+    delete requestData.reminderTime
+    delete requestData.targetDays
+    delete requestData.partyId
+    delete requestData.isActive
+    
+    return api.post('/habits/', requestData)
       .then(response => response.data)
       .catch(error => {
         throw error
       })
   },
   
-  // TODO: Implement updateHabit
-  // WHY: Update an existing habit
   async updateHabit(habitId, habitData) {
-    return api.put(`/habits/${habitId}`, habitData)
+    // Convert camelCase to snake_case for backend compatibility
+    // Also convert empty strings to null for optional fields
+    const reminderTime = habitData.reminderTime !== undefined ? habitData.reminderTime : habitData.reminder_time
+    const requestData = {
+      ...habitData,
+      reminder_time: reminderTime !== undefined ? (reminderTime && reminderTime.trim() ? reminderTime.trim() : null) : undefined,
+      target_days: habitData.targetDays !== undefined ? habitData.targetDays : habitData.target_days,
+      party_id: habitData.partyId !== undefined ? habitData.partyId : habitData.party_id,
+      is_active: habitData.isActive !== undefined ? habitData.isActive : habitData.is_active
+    }
+    // Remove camelCase versions
+    delete requestData.reminderTime
+    delete requestData.targetDays
+    delete requestData.partyId
+    delete requestData.isActive
+    
+    return api.put(`/habits/${habitId}`, requestData)
       .then(response => response.data)
       .catch(error => {
         throw error
       })
   },
   
-  // TODO: Implement deleteHabit
-  // WHY: Delete a habit
   async deleteHabit(habitId) {
     return api.delete(`/habits/${habitId}`)
       .then(response => response.data)
@@ -59,8 +81,6 @@ const habitService = {
       })
   },
   
-  // TODO: Implement completeHabit
-  // WHY: Quick completion for today
   async completeHabit(habitId) {
     return api.post(`/habits/${habitId}/complete`)
       .then(response => response.data)
@@ -69,8 +89,6 @@ const habitService = {
       })
   },
   
-  // TODO: Implement getHabitStats
-  // WHY: Get statistics for a habit
   async getHabitStats(habitId) {
     return api.get(`/habits/${habitId}/stats`)
       .then(response => response.data)
@@ -79,8 +97,6 @@ const habitService = {
       })
   },
   
-  // TODO: Implement logCompletion
-  // WHY: Log habit completion for specific date
   async logCompletion(habitId, logData) {
     return api.post('/logs', { habit_id: habitId, ...logData })
       .then(response => response.data)

@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import authService from '../../services/authService'
+import { MoonIcon } from '../Common/Icons'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -19,6 +20,7 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    e.stopPropagation()
     setError('')
 
     // Validate inputs
@@ -34,13 +36,15 @@ export default function Login() {
       const response = await authService.login(email, password)
 
       // Store token and update auth state
-      await login(response.token)
+      // Backend returns { access_token: "...", token_type: "Bearer" }
+      await login(response.access_token)
 
       // Redirect to dashboard
       navigate('/')
     } catch (err) {
-      // Handle errors
-      const message = err.response?.data?.message || 'Invalid email or password'
+      // Handle errors - extract message from error object
+      // The API interceptor sets error.message from detail/message
+      const message = err.message || err.response?.data?.detail || err.response?.data?.message || 'Invalid email or password'
       setError(message)
     } finally {
       setIsLoading(false)
@@ -48,26 +52,29 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8 bg-white rounded-xl shadow-lg">
-        <div>
-          <h2 className="text-3xl font-bold text-center text-gray-900">
+    <div className="min-h-screen flex items-center justify-center gradient-lunar p-4">
+      <div className="max-w-md w-full space-y-8 p-8 lg:p-10 card-elevated animate-fade-in">
+        <div className="text-center">
+          <MoonIcon className="w-16 h-16 mx-auto mb-4 text-accent-400" />
+          <h2 className="text-3xl font-bold text-gradient-martian mb-2">
             Welcome Back
           </h2>
-          <p className="mt-2 text-center text-gray-600">
+          <p className="text-gray-400 font-medium">
             Sign in to your account
           </p>
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-lg">
-            {error}
+          <div className="bg-terracotta-600/20 text-terracotta-300 p-4 rounded-soft border border-terracotta-500/50 animate-slide-up">
+            <div className="flex items-center space-x-2">
+              <span className="font-medium">{error}</span>
+            </div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-6 animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="email" className="block text-sm font-semibold text-lunar-700 mb-2">
               Email
             </label>
             <input
@@ -76,13 +83,13 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Enter your email"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input"
               required
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="password" className="block text-sm font-semibold text-lunar-700 mb-2">
               Password
             </label>
             <input
@@ -91,7 +98,7 @@ export default function Login() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter your password"
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="input"
               required
             />
           </div>
@@ -99,15 +106,15 @@ export default function Login() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-2 px-4 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50"
+            className="btn-primary w-full"
           >
             {isLoading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
-        <p className="text-center text-gray-600">
+        <p className="text-center text-gray-400 animate-slide-up" style={{ animationDelay: '0.2s' }}>
           Don't have an account?{' '}
-          <Link to="/register" className="text-blue-600 hover:underline">
+          <Link to="/register" className="link font-semibold">
             Sign up
           </Link>
         </p>
