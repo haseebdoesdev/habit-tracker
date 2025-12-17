@@ -8,7 +8,7 @@ Defines habit log/completion API endpoints.
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from typing import Optional, List
+from typing import Optional, List, Dict, Tuple
 from datetime import date, datetime, timedelta
 import logging
 
@@ -29,6 +29,24 @@ router = APIRouter(
 
 # Initialize Gemini helper
 gemini = GeminiHelper()
+
+# ---------------------------------------------------------------------------
+# In-memory cache for mood insight AI text, per user and date range.
+# The heavy lifting for sentiment/mood labels is handled by VADER
+# (see sentiment_helper); here we only cache the Gemini-generated narrative
+# string so we don't re-call the model repeatedly for the same period.
+# ---------------------------------------------------------------------------
+
+MoodInsightsKey = Tuple[int, str, str]  # (user_id, start_iso, end_iso)
+mood_insights_cache: Dict[MoodInsightsKey, Dict] = {}
+MOOD_INSIGHTS_TTL = timedelta(hours=6)
+
+
+def _is_fresh(entry: Dict, ttl: timedelta) -> bool:
+    ts: datetime = entry.get("generated_at")
+    if not ts:
+        return False
+    return datetime.utcnow() - ts < ttl
 
 
 @router.post("/", status_code=status.HTTP_201_CREATED, response_model=LogResponse)
@@ -298,23 +316,37 @@ async def get_mood_insights(
             "mood_distribution": mood_distribution,
             "average_intensity": sum(log.mood_intensity for log in logs) / len(logs) if logs else 0.5
         }
-        
-        try:
-            prompt = f"""
-            Analyze this mood tracking data from a habit tracker:
-            Total entries: {len(logs)}
-            Mood distribution: {mood_distribution}
-            Recent moods: {recent_moods[-5:]}
-            Average intensity: {context['average_intensity']:.2f}
-            
-            Provide a brief, encouraging insight (2-3 sentences) about the user's mood patterns.
-            Focus on positive observations and gentle suggestions if patterns are concerning.
-            """
-            ai_insights = await gemini.generate_text(prompt)
-        except Exception as e:
-            logger = logging.getLogger(__name__)
-            logger.error(f"Failed to generate mood insights: {e}")
-            ai_insights = "Keep tracking your mood to see patterns over time."
+
+        # Check cache for this user + date range
+        cache_key: MoodInsightsKey = (
+            current_user.id,
+            start_date.isoformat(),
+            end_date.isoformat(),
+        )
+        cached = mood_insights_cache.get(cache_key)
+        if cached and _is_fresh(cached, MOOD_INSIGHTS_TTL):
+            ai_insights = cached["ai_insights"]
+        else:
+            try:
+                prompt = f"""
+                Analyze this mood tracking data from a habit tracker:
+                Total entries: {len(logs)}
+                Mood distribution: {mood_distribution}
+                Recent moods: {recent_moods[-5:]}
+                Average intensity: {context['average_intensity']:.2f}
+                
+                Provide a brief, encouraging insight (2-3 sentences) about the user's mood patterns.
+                Focus on positive observations and gentle suggestions if patterns are concerning.
+                """
+                ai_insights = await gemini.generate_text(prompt)
+                mood_insights_cache[cache_key] = {
+                    "ai_insights": ai_insights,
+                    "generated_at": datetime.utcnow(),
+                }
+            except Exception as e:
+                logger = logging.getLogger(__name__)
+                logger.error(f"Failed to generate mood insights: {e}")
+                ai_insights = "Keep tracking your mood to see patterns over time."
     
     return MoodInsightsResponse(
         mood_trend=mood_trend,
